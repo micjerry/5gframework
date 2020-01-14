@@ -115,6 +115,7 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
     memset(&runtime, 0, sizeof(runtime));
     gethostname(runtime.hostname, sizeof(runtime.hostname));
     runtime.cpu_count = sysconf (_SC_NPROCESSORS_ONLN);
+    runtime.hard_log_level = AGC_LOG_DEBUG;
     
     if (apr_initialize() != AGC_STATUS_SUCCESS) {
 		*err = "FATAL ERROR! Could not initialize APR\n";
@@ -137,9 +138,12 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
     agc_mutex_init(&runtime.uuid_mutex, SWITCH_MUTEX_NESTED, runtime.memory_pool);
     agc_mutex_init(&runtime.global_mutex, SWITCH_MUTEX_NESTED, runtime.memory_pool);
     
+    if (console) {
+        runtime.console = stdout;
+    }
+    
     #parse_yaml_config
     parse_config(err);
-    
     
 }
 

@@ -1,0 +1,161 @@
+dnl Process this file with autoconf to produce a configure script.
+dnl
+dnl This file is free software; as a special exception the author gives
+dnl unlimited permission to copy and/or distribute it, with or without
+dnl modifications, as long as this notice is preserved.
+dnl
+dnl This program is distributed in the hope that it will be useful, but
+dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
+dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+AC_INIT([AGC], [0.1.0], [help@agc.com])
+
+AC_SUBST(LIBVERSION)
+LIBVERSION=1:0:0
+
+dnl Must come before AM_INIT_AUTOMAKE.
+AC_CONFIG_AUX_DIR([build])
+AC_CONFIG_TESTDIR(test)
+AM_INIT_AUTOMAKE([1.10 -Wall -Werror foreign subdir-objects])
+
+AC_CONFIG_HEADERS([config.h:config.in])
+AC_CONFIG_SRCDIR([agc.c])
+AC_CANONICAL_HOST
+
+case $host in
+    *linux*)
+        OSDIR="unix"
+        OSCPPFLAGS="-DLINUX=1"
+        ;;
+    *-apple-darwin*)
+        OSDIR="unix"
+        OSCPPFLAGS="-DDARWIN -DSIGPROCMASK_SETS_THREAD_MASK"
+        ;;
+    *)
+        OSDIR="unix"
+        ;;    
+esac
+
+AC_SUBST(OSCPPFLAGS)
+AC_SUBST(OSDIR)
+
+AH_TOP([
+#ifndef __AGC_CONFIG_H__
+#define __AGC_CONFIG_H__
+/* need this, because some autoconf tests rely on this (e.g. stpcpy)
+ * and it should be used for new programs  */
+#define _DEFAULT_SOURCE 1
+#define _BSD_SOURCE  	1
+])
+
+AH_BOTTOM([
+#endif /* __AGC_CONFIG_H__ */
+])
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+dnl Checks CC 
+AC_PROG_MAKE_SET
+AC_PROG_MKDIR_P
+AC_PROG_CC
+AC_PROG_INSTALL
+AM_PROG_AR
+
+LT_INIT([pic-only disable-static])
+
+AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
+if test "x$PKG_CONFIG" = "xno"; then
+	AC_MSG_ERROR([You need to install pkg-config])
+fi
+
+PKG_PROG_PKG_CONFIG([0.20])
+
+dnl Checks for compile flag
+AX_CHECK_COMPILE_FLAG([-Wno-unused-result], [CFLAGS="$CFLAGS -Wno-unused-result"])
+
+AC_HEADER_STDC
+
+AC_CHECK_HEADERS( \
+    sys/stat.h \
+    sys/types.h \
+    pthread.h \
+    time.h \
+    signal.h \
+    stdio.h \
+    stddef.h \
+    assert.h \
+    setjmp.h \
+    ctype.h \
+    fcntl.h \
+    string.h \
+    strings.h \
+    stdio.h \
+    stdint.h \
+    stdlib.h \
+    string.h \
+    strings.h \
+    limits.h \
+    errno.h \
+    inttypes.h \
+    arpa/inet.h \
+    sys/socket.h \
+    netinet/in.h \
+    netdb.h \
+)
+
+##########################################
+#### Checks for typedefs, structures, ####
+####  and compiler characteristics.   ####
+##########################################
+
+AC_C_BIGENDIAN
+
+AC_CHECK_FILE(/dev/null,
+    AC_DEFINE([HAVE_DEV_NULL], [1],
+        [Define to 1 if you have the /dev/null file.]))
+        
+#######################################
+#### Checks for library functions. ####
+#######################################
+
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(\
+    gettimeofday \
+    strerror \
+    sigaction sigwait sigsuspend \
+    strcpy strcasecmp strtoul stricmp \
+    writev \
+    utime utimes \
+    sched_yield \
+    getenv putenv setenv unsetenv \
+)
+
+AC_SEARCH_LIBS([sctp_sendmsg], [sctp], [have_sctp_lib=yes], [have_sctp_lib=no])
+if test x$have_sctp_lib == xno; then
+  AC_SEARCH_LIBS([usrsctp_init], [usrsctp], [have_usrsctp_lib=yes], [have_usrsctp_lib=no])
+  if test x$have_usrsctp_lib == xno; then
+    AC_MSG_ERROR([You must install the SCTP libraries and development headers to enable SCTP support.])
+  else
+    AC_DEFINE([USE_USRSCTP], [1], [Define to 1 if you have the user sctp library.])
+  fi 
+fi
+
+PKG_CHECK_MODULES([YAML], yaml-0.1 >= 0.1.4)
+
+#####################
+#### Conclusion. ####
+#####################
+
+AC_CONFIG_FILES(src/Makefile)
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
+
+echo "
+AGC configuration
+--------------------
+host                    : ${host}
+source code location    : ${srcdir}
+compiler                : ${CC}
+compiler flags          : ${CFLAGS} ${YAML_CFLAGS}
+linker flags            : ${LDFLAGS} ${LIBS} ${YAML_LIBS}
+"

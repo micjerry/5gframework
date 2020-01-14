@@ -2,6 +2,7 @@
 #define AGC_UTILS_H
 
 #include <agc.h>
+#include <math.h>
 
 AGC_BEGIN_EXTERN_C
 
@@ -171,6 +172,11 @@ static inline int _zstr(const char *s)
 }
 
 #define agc_strlen_zero(x) zstr(x)
+#define agc_safe_free(it) if (it) {free(it);it=NULL;}
+#define agc_set_string(_dst, _src) agc_copy_string(_dst, _src, sizeof(_dst))
+
+AGC_DECLARE(const char *) agc_cut_path(const char *in);
+AGC_DECLARE(agc_bool_t) agc_is_number(const char *str);
 
 AGC_END_EXTERN_C
 #endif

@@ -29,6 +29,8 @@ struct agc_runtime {
     int cpu_count;
     agc_mutex_t *uuid_mutex;
     agc_mutex_t *global_mutex;
+    agc_log_level_t hard_log_level;
+    FILE *console;
 };
 
 extern struct agc_runtime runtime;

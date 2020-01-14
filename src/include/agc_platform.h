@@ -41,5 +41,14 @@ typedef intptr_t agc_ssize_t;
 #define agc_assert(expr) assert(expr)
 #endif
 
+#if __GNUC__ >= 3
+#define PRINTF_FUNCTION(fmtstr,vars) __attribute__((format(printf,fmtstr,vars)))
+#else
+#define PRINTF_FUNCTION(fmtstr,vars)
+#endif
+
+#define __AGC_FUNC__ (const char *)__func__
+
+
 AGC_END_EXTERN_C
 #endif
