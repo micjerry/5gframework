@@ -23,7 +23,7 @@ AC_CONFIG_TESTDIR(test)
 AM_INIT_AUTOMAKE([1.10 -Wall -Werror foreign subdir-objects])
 
 AC_CONFIG_HEADERS([config.h:config.in])
-AC_CONFIG_SRCDIR([agc.c])
+AC_CONFIG_SRCDIR([src/agc.c])
 AC_CANONICAL_HOST
 
 case $host in
@@ -108,6 +108,25 @@ AC_CHECK_HEADERS( \
 )
 
 ##########################################
+####    Checks for compile flags.     ####
+##########################################
+agc_builddir=`pwd`
+agc_srcdir=`(cd $srcdir && pwd)`
+AC_SUBST(agc_builddir)
+AC_SUBST(agc_srcdir)
+
+# set defaults for use on all platforms
+AGC_AM_CFLAGS="-I${agc_srcdir}/src/include -I${agc_builddir}/src/include"
+AGC_AM_CXXFLAGS="-I${agc_srcdir}/src/include -I${agc_builddir}/src/include"
+AGC_AM_CPPFLAGS="-I${agc_srcdir}/src/include -I${agc_builddir}/src/include"
+AGC_AM_LDFLAGS="-lm"
+
+AC_SUBST(AGC_AM_CFLAGS)
+AC_SUBST(AGC_AM_CXXFLAGS)
+AC_SUBST(AGC_AM_CPPFLAGS)
+AC_SUBST(AGC_AM_LDFLAGS)
+
+##########################################
 #### Checks for typedefs, structures, ####
 ####  and compiler characteristics.   ####
 ##########################################
@@ -150,9 +169,21 @@ if test "x$prefix" = "xNONE" ; then
     prefix='/opt/agc'
 fi
 
+AC_CHECK_LIB(apr-1, apr_pool_mutex_set, use_system_apr=yes, use_system_apr=no)
+AM_CONDITIONAL([SYSTEM_APR],[test "${use_system_apr}" = "yes"])
+AC_CHECK_LIB(aprutil-1, apr_queue_pop_timeout, use_system_aprutil=yes, use_system_aprutil=no)
+AM_CONDITIONAL([SYSTEM_APRUTIL],[test "${use_system_aprutil}" = "yes"])
+
 #####################
 #### Conclusion. ####
 #####################
+
+if test "$use_system_apr" != "yes"; then
+   AC_CONFIG_SUBDIRS([libs/apr])
+fi
+if test "$use_system_aprutil" != "yes"; then
+   AC_CONFIG_SUBDIRS([libs/apr-util])
+fi
 
 AC_CONFIG_FILES([src/include/agc_version.h])
 AC_CONFIG_FILES([src/include/agc_am_config.h])
