@@ -51,19 +51,14 @@ APR_LIBS   = $(AM_LIBAPU_LIBS) $(AM_LIBAPR_LIBS)
 
 CLEANFILES    = src/include/agc_version.h src/include/agc_am_config.h
 
-bin_PROGRAMS = agc
+##
+## libagc
+##
+lib_LTLIBRARIES = libagc.la
 
-nodist_agc_SOURCES = src/include/agc_version.h
-agc_SOURCES = src/agc.c
-agc_CFLAGS  = $(AM_CFLAGS) $(CORE_CFLAGS)
-agc_LDFLAGS = $(AM_LDFLAGS) -lpthread 
-agc_LDADD   = libagc.la libs/apr/libapr-1.la
-
-noinst_LTLIBRARIES = libagc.la
-
-libagc_la_SOURCES = \
+library_includedir      = $(includedir)
+library_include_HEADERS = \
 	src/include/agc.h \
-	src/include/agc_am_config.h \
 	src/include/agc_apr.h \
 	src/include/agc_core.h \
 	src/include/agc_event.h \
@@ -71,8 +66,13 @@ libagc_la_SOURCES = \
 	src/include/agc_platform.h \
 	src/include/agc_types.h \
 	src/include/agc_utils.h \
+	src/include/private/agc_core_pvt.h
+ 
+nodist_libagc_la_SOURCES = \
 	src/include/agc_version.h \
-	src/include/private/agc_core_pvt.h \
+	src/include/agc_am_config.h
+
+libagc_la_SOURCES = \
 	src/agc_apr.c \
 	src/agc_config.c \
 	src/agc_core.c \
@@ -81,11 +81,21 @@ libagc_la_SOURCES = \
 	src/agc_time.c \
 	src/agc_utils.c \
 	$(NULL)
-    
+
 libagc_la_CFLAGS  = $(CORE_CFLAGS)
 libagc_la_LDFLAGS = -version-info 1:0:0 $(AM_LDFLAGS) -no-undefined
 libagc_la_LIBADD = $(CORE_LIBS) $(APR_LIBS) $(YAML_LIBS)
 
+##
+## Applications
+##
+bin_PROGRAMS = agc
+
+nodist_agc_SOURCES = src/include/agc_version.h
+agc_SOURCES = src/agc.c
+agc_CFLAGS  = $(AM_CFLAGS) $(CORE_CFLAGS)
+agc_LDFLAGS = $(AM_LDFLAGS) -lpthread 
+agc_LDADD   = libagc.la libs/apr/libapr-1.la
+
 MAINTAINERCLEANFILES = Makefile.in
 MOSTLYCLEANFILES = core *.stackdump
-   

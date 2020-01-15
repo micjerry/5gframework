@@ -169,6 +169,12 @@ if test "x$prefix" = "xNONE" ; then
     prefix='/opt/agc'
 fi
 
+if test "$includedir" = "\${prefix}/include" ; then
+   includedir="${prefix}/include/agc"
+fi
+
+AC_SUBST(includedir)
+
 AC_CHECK_LIB(apr-1, apr_pool_mutex_set, use_system_apr=yes, use_system_apr=no)
 AM_CONDITIONAL([SYSTEM_APR],[test "${use_system_apr}" = "yes"])
 AC_CHECK_LIB(aprutil-1, apr_queue_pop_timeout, use_system_aprutil=yes, use_system_aprutil=no)
