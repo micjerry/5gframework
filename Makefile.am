@@ -2,7 +2,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = lib src test
+SUBDIRS = libs src test
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 if SYSTEM_APR
@@ -43,7 +43,7 @@ endif
 CORE_CFLAGS  = $(AM_LIBAPR_CFLAGS) $(AM_LIBAPR_CPPFLAGS)
 CORE_CFLAGS += $(AM_LIBAPU_CPPFLAGS)
 
-AM_CFLAGS   = $(AGC_AM_CFLAGS)
+AM_CFLAGS   = $(AGC_AM_CFLAGS) $(YAML_CFLAGS)
 AM_CPPFLAGS = $(AGC_AM_CXXFLAGS)
 AM_LDFLAGS  = $(AGC_AM_LDFLAGS) $(AM_LIBAPR_LDFLAGS) $(AM_LIBAPU_LDFLAGS)
 
@@ -84,7 +84,7 @@ libagc_la_SOURCES = \
     
 libagc_la_CFLAGS  = $(CORE_CFLAGS)
 libagc_la_LDFLAGS = -version-info 1:0:0 $(AM_LDFLAGS) -no-undefined
-libagc_la_LIBADD = $(CORE_LIBS) $(APR_LIBS)
+libagc_la_LIBADD = $(CORE_LIBS) $(APR_LIBS) $(YAML_LIBS)
 
 MAINTAINERCLEANFILES = Makefile.in
 MOSTLYCLEANFILES = core *.stackdump

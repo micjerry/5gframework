@@ -74,9 +74,6 @@ fi
 
 PKG_PROG_PKG_CONFIG([0.20])
 
-dnl Checks for compile flag
-AX_CHECK_COMPILE_FLAG([-Wno-unused-result], [CFLAGS="$CFLAGS -Wno-unused-result"])
-
 AC_HEADER_STDC
 
 AC_CHECK_HEADERS( \
@@ -165,6 +162,9 @@ fi
 
 PKG_CHECK_MODULES([YAML], yaml-0.1 >= 0.1.4)
 
+AC_SUBST(YAML_CFLAGS)
+AC_SUBST(YAML_LIBS)
+
 if test "x$prefix" = "xNONE" ; then
     prefix='/opt/agc'
 fi
@@ -174,9 +174,14 @@ AM_CONDITIONAL([SYSTEM_APR],[test "${use_system_apr}" = "yes"])
 AC_CHECK_LIB(aprutil-1, apr_queue_pop_timeout, use_system_aprutil=yes, use_system_aprutil=no)
 AM_CONDITIONAL([SYSTEM_APRUTIL],[test "${use_system_aprutil}" = "yes"])
 
+AC_SUBST(SYSTEM_APR)
+AC_SUBST(SYSTEM_APRUTIL)
+
 #####################
 #### Conclusion. ####
 #####################
+
+ac_configure_args="$ac_configure_args CONFIGURE_CFLAGS='$CFLAGS $CPPFLAGS' CONFIGURE_CXXFLAGS='$CXXFLAGS $CPPFLAGS' CONFIGURE_LDFLAGS='$LDFLAGS' "
 
 if test "$use_system_apr" != "yes"; then
    AC_CONFIG_SUBDIRS([libs/apr])
@@ -187,7 +192,6 @@ fi
 
 AC_CONFIG_FILES([src/include/agc_version.h])
 AC_CONFIG_FILES([src/include/agc_am_config.h])
-AC_CONFIG_FILES(src/Makefile)
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
@@ -197,6 +201,6 @@ AGC configuration
 host                    : ${host}
 source code location    : ${srcdir}
 compiler                : ${CC}
-compiler flags          : ${CFLAGS} ${YAML_CFLAGS}
-linker flags            : ${LDFLAGS} ${LIBS} ${YAML_LIBS}
+compiler flags          : ${AGC_AM_CFLAGS} ${YAML_CFLAGS}
+linker flags            : ${AGC_AM_LDFLAGS ${YAML_LIBS}
 "
