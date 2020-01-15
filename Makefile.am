@@ -2,7 +2,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libs src test
+SUBDIRS = . src build
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 if SYSTEM_APR
