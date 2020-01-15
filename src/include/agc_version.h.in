@@ -1,0 +1,16 @@
+#ifndef AGC_VERSION_H
+#define AGC_VERSION_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define AGC_VERSION_MAJOR			"@AGC_VERSION_MAJOR@"
+#define AGC_VERSION_MINOR			"@AGC_VERSION_MINOR@"
+#define AGC_VERSION_MICRO			"@AGC_VERSION_MICRO@"
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

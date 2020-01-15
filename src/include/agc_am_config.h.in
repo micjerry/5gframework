@@ -1,0 +1,6 @@
+#ifndef AGC_AM_CONFIG_H
+#define AGC_AM_CONFIG_H
+
+#define AGC_PREFIX_DIR "@prefix@"
+
+#endif
