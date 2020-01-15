@@ -271,6 +271,17 @@ bootstrap_apr() {
   ./buildconf
 }
 
+bootstrap_agc() {
+  cd ${BASEDIR}
+  rm -f aclocal.m4
+  ${ACLOCAL:-aclocal} ${ACLOCAL_OPTS}
+  $libtoolize --copy --automake
+  ${AUTOCONF:-autoconf}
+  ${AUTOHEADER:-autoheader}
+  ${AUTOMAKE:-automake} --no-force --add-missing --copy
+  rm -rf autom4te*.cache
+}
+
 run() {
   setup_gnu
   check_make
@@ -281,6 +292,7 @@ run() {
   check_libtoolize
   print_autotools_vers
   bootstrap_apr
+  bootstrap_agc
   return 0
 }
 

@@ -187,6 +187,7 @@ if test "$use_system_apr" != "yes"; then
    AC_CONFIG_SUBDIRS([libs/apr])
 fi
 if test "$use_system_aprutil" != "yes"; then
+   ac_configure_args="$ac_configure_args --with-apr=../apr" 
    AC_CONFIG_SUBDIRS([libs/apr-util])
 fi
 
@@ -195,12 +196,11 @@ AC_CONFIG_FILES([src/include/agc_am_config.h])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
-echo "
-AGC configuration
---------------------
-host                    : ${host}
-source code location    : ${srcdir}
-compiler                : ${CC}
-compiler flags          : ${AGC_AM_CFLAGS} ${YAML_CFLAGS}
-linker flags            : ${AGC_AM_LDFLAGS ${YAML_LIBS}
-"
+echo 
+echo "------------------AGC configuration-------------"
+echo "source code location    : ${srcdir}"
+echo "compiler                : ${CC}"
+echo "agc compiler flags      : ${AGC_AM_CFLAGS}"
+echo "yml compile flags       : ${YAML_CFLAGS}"
+echo "agc linker flags:       : ${AGC_AM_LDFLAGS}"
+echo "yml linker flags:       : ${YAML_LIBS}"
