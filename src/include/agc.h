@@ -24,6 +24,7 @@
 #include "agc_apr.h"
 #include "agc_utils.h"
 #include "agc_log.h"
+#include "agc_core.h"
 
 #endif
 

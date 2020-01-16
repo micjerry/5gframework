@@ -30,7 +30,7 @@ static void *pool_thread(agc_thread_t *thread, void *obj)
 #if defined(PER_POOL_LOCK) 
                 apr_pool_destroy(pop);
 #else
-                apr_pool_mutex_set(pop, NULL);
+                //apr_pool_mutex_set(pop, NULL);
 #endif
                 x--;
             }
@@ -39,7 +39,7 @@ static void *pool_thread(agc_thread_t *thread, void *obj)
                 break;
             }
         } else {
-            switch_yield(1000000);
+            agc_yield(1000000);
         }
     }
     
@@ -80,7 +80,7 @@ agc_memory_pool_t *agc_core_memory_init(void)
 	}
     
 	apr_allocator_mutex_set(my_allocator, my_mutex);
-	apr_pool_mutex_set(memory_manager.memory_pool, my_mutex);
+	//apr_pool_mutex_set(memory_manager.memory_pool, my_mutex);
 	apr_allocator_owner_set(my_allocator, memory_manager.memory_pool);
 	apr_pool_tag(memory_manager.memory_pool, "core_pool");
 #else
@@ -101,6 +101,66 @@ agc_memory_pool_t *agc_core_memory_init(void)
 	}
     
     return memory_manager.memory_pool;
+}
+
+AGC_DECLARE(agc_status_t) agc_core_destroy_memory_pool(agc_memory_pool_t **pool)
+{
+    agc_assert(pool != NULL);
+
+    if (*pool == NULL) 
+        return AGC_STATUS_SUCCESS;
+
+    if ((memory_manager.pool_thread_running != 1) || (agc_queue_push(memory_manager.pool_queue, *pool) != AGC_STATUS_SUCCESS)) {
+        apr_pool_destroy(*pool);
+    }
+
+    *pool = NULL;
+
+    return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_core_new_memory_pool(agc_memory_pool_t **pool)
+{
+    apr_allocator_t *my_allocator = NULL;
+    apr_thread_mutex_t *my_mutex;
+
+    agc_assert(pool != NULL);
+
+    if ((apr_allocator_create(&my_allocator)) != APR_SUCCESS) {
+        abort();
+    }
+
+    if ((apr_pool_create_ex(pool, NULL, NULL, my_allocator)) != APR_SUCCESS) {
+        abort();
+    }
+
+    if ((apr_thread_mutex_create(&my_mutex, APR_THREAD_MUTEX_NESTED, *pool)) != APR_SUCCESS) {
+        abort();
+    }
+
+    apr_allocator_mutex_set(my_allocator, my_mutex);
+    apr_allocator_owner_set(my_allocator, *pool);
+
+    //apr_pool_mutex_set(*pool, my_mutex);
+    return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(void *) agc_core_alloc(agc_memory_pool_t *pool, agc_size_t memory)
+{
+    void *ptr = NULL;
+
+    agc_assert(pool != NULL);
+
+    ptr = apr_palloc(pool, memory);
+    agc_assert(ptr != NULL);
+    memset(ptr, 0, memory);
+
+    return ptr;
+}
+
+AGC_DECLARE(void) agc_core_memory_pool_set_data(agc_memory_pool_t *pool, const char *key, void *data)
+{
+    apr_pool_userdata_set(data, key, NULL, pool);
 }
 
 

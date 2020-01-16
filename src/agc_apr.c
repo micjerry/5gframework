@@ -1033,7 +1033,8 @@ AGC_DECLARE(agc_status_t) agc_queue_pop(agc_queue_t *queue, void **data)
 
 AGC_DECLARE(agc_status_t) agc_queue_pop_timeout(agc_queue_t *queue, void **data, agc_interval_time_t timeout)
 {
-	return apr_queue_pop_timeout(queue, data, timeout);
+    // TODO apr_queue_timedpop(queue, data, timeout);
+	return apr_queue_pop(queue, data);
 }
 
 AGC_DECLARE(agc_status_t) agc_queue_push(agc_queue_t *queue, void *data)
@@ -1223,4 +1224,9 @@ AGC_DECLARE(char *) agc_strerror(agc_status_t statcode, char *buf, agc_size_t bu
        return apr_strerror(statcode, buf, bufsize);
 }
 
-
+//TODO timer
+AGC_DECLARE(void) agc_sleep(agc_interval_time_t t)
+{
+    apr_sleep(t);
+    return;
+}

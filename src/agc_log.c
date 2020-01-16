@@ -44,7 +44,7 @@ static agc_log_node_t *agc_log_node_alloc()
 {
 	agc_log_node_t *node = NULL;
     node = malloc(sizeof(*node));
-    switch_assert(node);
+    agc_assert(node);
 	return node;
 }
 
@@ -172,7 +172,8 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
     console = runtime.console;
     
     //format log datetime
-    now = switch_micro_time_now();
+    now = agc_time_now();
+    // TODO now = agc_micro_time_now();
     agc_time_exp_lt(&tm, now);
 	agc_snprintf(date, sizeof(date), "%0.4d-%0.2d-%0.2d %0.2d:%0.2d:%0.2d.%0.6d",
 						tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_usec);

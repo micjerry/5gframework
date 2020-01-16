@@ -1,4 +1,5 @@
 #include <agc.h>
+#include "private/agc_core_pvt.h"
 
 int main(int argc, char *argv[])
 {

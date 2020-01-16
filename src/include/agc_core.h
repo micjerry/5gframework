@@ -29,4 +29,12 @@ AGC_DECLARE(void) agc_core_set_globals(void);
 
 AGC_DECLARE(agc_status_t) agc_core_init_and_modload(agc_bool_t console, const char **err);
 
+AGC_DECLARE(agc_status_t) agc_core_destroy_memory_pool(agc_memory_pool_t **pool);
+
+AGC_DECLARE(agc_status_t) agc_core_new_memory_pool(agc_memory_pool_t **pool);
+
+AGC_DECLARE(void *) agc_core_alloc(agc_memory_pool_t *pool, agc_size_t memory);
+
+AGC_DECLARE(void) agc_core_memory_pool_set_data(agc_memory_pool_t *pool, const char *key, void *data);
+
 #endif

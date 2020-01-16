@@ -39,3 +39,26 @@ AGC_DECLARE(agc_bool_t) agc_is_number(const char *str)
 	return r;
 }
 
+AGC_DECLARE(char *) get_addr(char *buf, agc_size_t len, struct sockaddr *sa, socklen_t salen)
+{
+    agc_assert(buf);
+    *buf = '\0';
+
+    if (sa) {
+        getnameinfo(sa, salen, buf, (socklen_t) len, NULL, 0, NI_NUMERICHOST);
+    }
+    return buf;
+}
+
+AGC_DECLARE(char *) get_addr6(char *buf, agc_size_t len, struct sockaddr_in6 *sa, socklen_t salen)
+{
+    agc_assert(buf);
+    *buf = '\0';
+
+    if (sa) {
+        inet_ntop(AF_INET6, &(sa->sin6_addr), buf, len);
+    }
+    
+    return buf;
+}
+
