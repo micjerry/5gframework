@@ -1,4 +1,5 @@
 #include <agc.h>
+#include "private/agc_core_pvt.h"
 
 static const char *LEVELS[] = {
 	"CONSOLE",
@@ -47,7 +48,7 @@ static agc_log_node_t *agc_log_node_alloc()
 	return node;
 }
 
-static void *log_thread(switch_thread_t *t, void *obj)
+static void *log_thread_func(agc_thread_t *t, void *obj)
 {
     if (!obj) {
 		obj = NULL;
@@ -96,13 +97,13 @@ AGC_DECLARE(agc_status_t) agc_log_init(agc_memory_pool_t *pool, agc_bool_t color
     agc_queue_create(&LOG_MESSAGE_QUEUE, AGC_LOG_QUEUE_LEN, LOG_MEMORY_POOL);
     agc_mutex_init(&LOGGER_BIND_LOCK, AGC_MUTEX_NESTED, LOG_MEMORY_POOL);
     agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
-    agc_thread_create(&log_thread, thd_attr, log_thread, NULL, LOG_MEMORY_POOL);
+    agc_thread_create(&log_thread, thd_attr, log_thread_func, NULL, LOG_MEMORY_POOL);
     while (!LOG_THREAD_RUNNING) {
 		agc_cond_next();
 	}
     
     if (colorize) {
-        COLORIZE = SWITCH_TRUE;
+        COLORIZE = AGC_TRUE;
     }
     
     return AGC_STATUS_SUCCESS;
@@ -147,13 +148,16 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
 {
     char *data = NULL;
     char *content = NULL;
+    int ret = 0;
+    uint32_t len;
     FILE *console;
+    const char *funcp = (func ? func : "");
     const char *filep = (file ? agc_cut_path(file) : "");
     const char *extra_fmt = "%s [%s] %s:%d%c%s";
     char *full_fmt = NULL;
     
     char date[80] = "";
-    switch_time_t now = {0};
+    agc_time_t now = {0};
     agc_time_exp_t tm;
     
     agc_log_level_t limit_level = runtime.hard_log_level;

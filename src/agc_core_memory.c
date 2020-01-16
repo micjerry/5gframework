@@ -1,3 +1,4 @@
+#include <agc.h>
 #include "private/agc_core_pvt.h"
 
 #define PER_POOL_LOCK 1
@@ -8,6 +9,8 @@ static struct {
 	agc_memory_pool_t *memory_pool;
 	int pool_thread_running;
 } memory_manager;
+
+static agc_thread_t *pool_thread_p = NULL;
 
 static void *pool_thread(agc_thread_t *thread, void *obj)
 {
@@ -41,7 +44,7 @@ static void *pool_thread(agc_thread_t *thread, void *obj)
     }
     
     void *pop = NULL;
-    while (switch_queue_trypop(memory_manager.pool_queue, &pop) == SWITCH_STATUS_SUCCESS && pop) {
+    while (agc_queue_trypop(memory_manager.pool_queue, &pop) == AGC_STATUS_SUCCESS && pop) {
         apr_pool_destroy(pop);
         pop = NULL;
     }

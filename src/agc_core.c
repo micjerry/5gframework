@@ -5,6 +5,7 @@
 #include "private/agc_core_pvt.h"
 
 agc_directories_t AGC_GLOBAL_dirs = { 0 };
+struct agc_runtime runtime = { 0 };
 
 void parse_config(const char **err) 
 {

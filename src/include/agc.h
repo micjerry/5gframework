@@ -23,7 +23,7 @@
 #include "agc_types.h"
 #include "agc_apr.h"
 #include "agc_utils.h"
-
+#include "agc_log.h"
 
 #endif
 
