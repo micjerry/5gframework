@@ -183,6 +183,8 @@ AM_CONDITIONAL([SYSTEM_APRUTIL],[test "${use_system_aprutil}" = "yes"])
 AC_SUBST(SYSTEM_APR)
 AC_SUBST(SYSTEM_APRUTIL)
 
+TOUCH_TARGET='if test -f "$@";then touch "$@";fi;'
+
 #####################
 #### Conclusion. ####
 #####################

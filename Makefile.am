@@ -5,6 +5,8 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = . src build
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
+all-recursive: libagc.la
+
 if SYSTEM_APR
 AM_LIBAPR_CFLAGS := $(shell apr-1-config --cflags)
 AM_LIBAPR_CPPFLAGS := $(shell apr-1-config --cppflags --includes)
@@ -28,6 +30,8 @@ AM_LIBAPU_LDFLAGS := $(shell ./libs/apr-util/apu-1-config --ldflags)
 AM_LIBAPU_LIBS := $(subst $(agc_builddir)/,,$(shell ./libs/apr-util/apu-1-config \--libs))
 endif
 
+APR_LIBS   = $(AM_LIBAPU_LIBS) $(AM_LIBAPR_LIBS)
+
 CORE_LIBS=
 if SYSTEM_APRUTIL
 CORE_LIBS += $(AM_LIBAPU_LINKLIBTOOL)
@@ -46,8 +50,6 @@ CORE_CFLAGS += $(AM_LIBAPU_CPPFLAGS)
 AM_CFLAGS   = $(AGC_AM_CFLAGS) $(YAML_CFLAGS)
 AM_CPPFLAGS = $(AGC_AM_CXXFLAGS)
 AM_LDFLAGS  = $(AGC_AM_LDFLAGS) $(AM_LIBAPR_LDFLAGS) $(AM_LIBAPU_LDFLAGS)
-
-APR_LIBS   = $(AM_LIBAPU_LIBS) $(AM_LIBAPR_LIBS)
 
 CLEANFILES    = src/include/agc_version.h src/include/agc_am_config.h
 
@@ -96,6 +98,19 @@ agc_SOURCES = src/agc.c
 agc_CFLAGS  = $(AM_CFLAGS) $(CORE_CFLAGS)
 agc_LDFLAGS = $(AM_LDFLAGS) -lpthread 
 agc_LDADD   = libagc.la libs/apr/libapr-1.la
+
+##
+## Dependency targets
+##
+libs/apr/Makefile: libs/apr/Makefile.in libs/apr/config.status libs/apr
+	@cd libs/apr && ./config.status
+	@$(TOUCH_TARGET)
+
+libs/apr/libapr-1.la: libs/apr/Makefile
+	@if [ $(MAKELEVEL) = 0 -o -z "`echo "$(MAKEARGS)" | grep  "j"`" ] ; then touch $(agc_srcdir)/src/include/agc.h; cd libs/apr && $(MAKE) $(MFLAGS) && touch libapr-1.la; fi
+
+libs/apr-util/libaprutil-1.la: libs/apr/libapr-1.la libs/apr-util
+	@if [ $(MAKELEVEL) = 0 -o -z "`echo "$(MAKEARGS)" | grep  "j"`" ] ; then touch $(agc_srcdir)/src/include/agc.h; cd libs/apr-util && $(MAKE) $(MFLAGS) && touch libaprutil-1.la; fi
 
 MAINTAINERCLEANFILES = Makefile.in
 MOSTLYCLEANFILES = core *.stackdump
