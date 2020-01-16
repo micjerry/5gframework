@@ -112,5 +112,26 @@ libs/apr/libapr-1.la: libs/apr/Makefile
 libs/apr-util/libaprutil-1.la: libs/apr/libapr-1.la libs/apr-util
 	@if [ $(MAKELEVEL) = 0 -o -z "`echo "$(MAKEARGS)" | grep  "j"`" ] ; then touch $(agc_srcdir)/src/include/agc.h; cd libs/apr-util && $(MAKE) $(MFLAGS) && touch libaprutil-1.la; fi
 
+##
+## Modules
+##
+
+src/mod/modules.inc: $(agc_builddir)/modules.conf
+	@echo "OUR_MODULES=$(OUR_MODS)" > $(agc_builddir)/src/mod/modules.inc
+	@echo "OUR_CLEAN_MODULES=$(OUR_CLEAN_MODS)" >> $(agc_builddir)/src/mod/modules.inc
+	@echo "OUR_INSTALL_MODULES=$(OUR_INSTALL_MODS)" >> $(agc_builddir)/src/mod/modules.inc
+	@echo "OUR_UNINSTALL_MODULES=$(OUR_UNINSTALL_MODS)" >> $(agc_builddir)/src/mod/modules.inc
+	@echo "OUR_DISABLED_MODULES=$(OUR_DISABLED_MODS)" >> $(agc_builddir)/src/mod/modules.inc
+	@echo "OUR_DISABLED_CLEAN_MODULES=$(OUR_DISABLED_CLEAN_MODS)" >> $(agc_builddir)/src/mod/modules.inc
+	@echo "OUR_DISABLED_INSTALL_MODULES=$(OUR_DISABLED_INSTALL_MODS)" >> $(agc_builddir)/src/mod/modules.inc
+	@echo "OUR_DISABLED_UNINSTALL_MODULES=$(OUR_DISABLED_UNINSTALL_MODS)" >> $(agc_builddir)/src/mod/modules.inc
+
+$(OUR_MODULES): $(agc_builddir)/modules.conf liagc.la src/mod/modules.inc
+	@set fnord $$MAKEFLAGS; amf=$$2; \
+	(cd src/mod && $(MAKE) $(AM_MAKEFLAGS) $@) \
+	   || case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
+	test -z "$$fail"
+
+
 MAINTAINERCLEANFILES = Makefile.in
 MOSTLYCLEANFILES = core *.stackdump

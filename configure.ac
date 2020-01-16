@@ -185,6 +185,34 @@ AC_SUBST(SYSTEM_APRUTIL)
 
 TOUCH_TARGET='if test -f "$@";then touch "$@";fi;'
 
+#########################
+#### Config modules. ####
+#########################
+
+CONF_MODULES='$$(grep -v "\#" $(agc_builddir)/modules.conf | sed -e "s|^.*/||" | sort | uniq )'
+CONF_DISABLED_MODULES='$$(grep "\#" $(agc_builddir)/modules.conf | grep -v "\#\#" | sed -e "s|^.*/||" | sort | uniq )'
+OUR_MODS='$$(if test -z "$(MODULES)" ; then tmp_mods="$(CONF_MODULES)"; else tmp_mods="$(MODULES)" ; fi ; mods="$$(for i in $$tmp_mods ; do echo $$i-all ; done )"; echo $$mods )'
+OUR_CLEAN_MODS='$$(if test -z "$(MODULES)" ; then tmp_mods="$(CONF_MODULES)"; else tmp_mods="$(MODULES)" ; fi ; mods="$$(for i in $$tmp_mods ; do echo $$i-clean ; done )"; echo $$mods )'
+OUR_INSTALL_MODS='$$(if test -z "$(MODULES)" ; then tmp_mods="$(CONF_MODULES)"; else tmp_mods="$(MODULES)" ; fi ; mods="$$(for i in $$tmp_mods ; do echo $$i-install ; done)"; echo $$mods )'
+OUR_UNINSTALL_MODS='$$(if test -z "$(MODULES)" ; then tmp_mods="$(CONF_MODULES)"; else tmp_mods="$(MODULES)" ; fi ; mods="$$(for i in $$tmp_mods ; do echo $$i-uninstall ; done)"; echo $$mods )'
+OUR_DISABLED_MODS='$$(tmp_mods="$(CONF_DISABLED_MODULES)"; mods="$$(for i in $$tmp_mods ; do echo $$i-all ; done )"; echo $$mods )'
+OUR_DISABLED_CLEAN_MODS='$$(tmp_mods="$(CONF_DISABLED_MODULES)";  mods="$$(for i in $$tmp_mods ; do echo $$i-clean ; done )"; echo $$mods )'
+OUR_DISABLED_INSTALL_MODS='$$(tmp_mods="$(CONF_DISABLED_MODULES)"; mods="$$(for i in $$tmp_mods ; do echo $$i-install ; done)"; echo $$mods )'
+OUR_DISABLED_UNINSTALL_MODS='$$(tmp_mods="$(CONF_DISABLED_MODULES)"; mods="$$(for i in $$tmp_mods ; do echo $$i-uninstall ; done)"; echo $$mods )'
+
+#AM_MAKEFLAGS='"OUR_MODULES=$(OUR_MODS)" "OUR_CLEAN_MODULES=$(OUR_CLEAN_MODS)" "OUR_INSTALL_MODULES=$(OUR_INSTALL_MODS)" "OUR_UNINSTALL_MODULES=$(OUR_UNINSTALL_MODS)" "OUR_DISABLED_MODULES=$(OUR_DISABLED_MODS)" "OUR_DISABLED_CLEAN_MODULES=$(OUR_DISABLED_CLEAN_MODS)" "OUR_DISABLED_INSTALL_MODULES=$(OUR_DISABLED_INSTALL_MODS)" "OUR_DISABLED_UNINSTALL_MODULES=$(OUR_DISABLED_UNINSTALL_MODS)" `test -n "$(VERBOSE)" || echo -s`'
+#AM_MAKEFLAGS='`test -n "$(VERBOSE)" || echo -s`'
+
+AC_SUBST(OUR_MODS)
+AC_SUBST(OUR_CLEAN_MODS)
+AC_SUBST(OUR_INSTALL_MODS)
+AC_SUBST(OUR_UNINSTALL_MODS)
+AC_SUBST(OUR_DISABLED_MODS)
+AC_SUBST(OUR_DISABLED_CLEAN_MODS)
+AC_SUBST(OUR_DISABLED_INSTALL_MODS)
+AC_SUBST(OUR_DISABLED_UNINSTALL_MODS)
+AC_SUBST(AM_MAKEFLAGS)
+
 #####################
 #### Conclusion. ####
 #####################
@@ -201,7 +229,10 @@ fi
 
 AC_CONFIG_FILES([src/include/agc_version.h])
 AC_CONFIG_FILES([src/include/agc_am_config.h])
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile
+        build/Makefile
+        src/Makefile
+        src/mod/Makefile])
 AC_OUTPUT
 
 echo 
