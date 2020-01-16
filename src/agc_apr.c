@@ -36,7 +36,7 @@ AGC_DECLARE(int) agc_status_is_timeup(int status)
 	return APR_STATUS_IS_TIMEUP(status);
 }
 
-AGC_DECLARE(apr_thread_id_t) agc_thread_self(void)
+AGC_DECLARE(agc_thread_id_t) agc_thread_self(void)
 {
     return apr_os_thread_current();
 }
@@ -474,6 +474,11 @@ AGC_DECLARE(agc_status_t) agc_dir_make_recursive(const char *path, agc_fileperms
 	return apr_dir_make_recursive(path, perm, pool);
 }
 
+struct agc_dir {
+    apr_dir_t *dir_handle;
+    apr_finfo_t finfo;
+};
+
 AGC_DECLARE(agc_status_t) agc_dir_open(agc_dir_t ** new_dir, const char *dirname, agc_memory_pool_t *pool)
 {
 	agc_status_t status;
@@ -557,6 +562,13 @@ AGC_DECLARE(const char *) agc_dir_next_file(agc_dir_t *thedir, char *buf, agc_si
 	}
 	return fname;
 }
+
+struct apr_threadattr_t {
+    apr_pool_t *pool;
+    pthread_attr_t attr;
+    int priority;
+};
+
 
 /* thread stubs */
 AGC_DECLARE(agc_status_t) agc_threadattr_create(agc_threadattr_t ** new_attr, agc_memory_pool_t *pool)
@@ -920,7 +932,7 @@ AGC_DECLARE(agc_status_t) agc_pollset_poll(agc_pollset_t *pollset, agc_interval_
 		st = apr_pollset_poll((apr_pollset_t *) pollset, timeout, num, (const apr_pollfd_t **) descriptors);
 		
 		if (st == APR_TIMEUP) {
-			st = agc_status_tIMEOUT;
+			st = AGC_STATUS_TIMEOUT;
 		}
 	}
 	
@@ -935,7 +947,7 @@ AGC_DECLARE(agc_status_t) agc_poll(agc_pollfd_t *aprset, int32_t numsock, int32_
 		st = apr_poll((apr_pollfd_t *) aprset, numsock, nsds, timeout);
 
 		if (st == APR_TIMEUP) {
-			st = agc_status_tIMEOUT;
+			st = AGC_STATUS_TIMEOUT;
 		}
 	}
 

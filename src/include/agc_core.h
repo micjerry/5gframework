@@ -1,8 +1,6 @@
 #ifndef AGC_CORE_H
 #define AGC_CORE_H
 
-AGC_BEGIN_EXTERN_C
-
 // global directories
 struct agc_directories {
 	char *base_dir;
@@ -30,7 +28,5 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err);
 AGC_DECLARE(void) agc_core_set_globals(void);
 
 AGC_DECLARE(agc_status_t) agc_core_init_and_modload(agc_bool_t console, const char **err);
-
-AGC_END_EXTERN_C
 
 #endif

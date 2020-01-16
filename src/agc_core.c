@@ -1,12 +1,16 @@
 #include <agc.h>
 #include <errno.h>
 #include <yaml.h>
+#include "agc_core.h"
 #include "private/agc_core_pvt.h"
+
+agc_directories_t AGC_GLOBAL_dirs = { 0 };
 
 void parse_config(const char **err) 
 {
     apr_dir_t *dir;
     apr_finfo_t finfo;
+    char *headers[16];
     
     if (apr_dir_open(&dir, AGC_GLOBAL_dirs.conf_dir, runtime.memory_pool) != APR_SUCCESS) {
         *err = "FATAL ERROR! Could not open conf dir\n";
@@ -24,7 +28,7 @@ void parse_config(const char **err)
         char last_key[128] = {0};
         char full_key[512] = {0};
     
-        file = finfo.fname, "rb");
+        file = fopen(finfo.fname, "rb");
         agc_assert(file);
         agc_assert(yaml_parser_initialize(&parser));
         yaml_parser_set_input_file(&parser, file);
@@ -102,7 +106,7 @@ void parse_config(const char **err)
  
         }
         yaml_parser_delete(&parser);
-        fclose(file)
+        fclose(file);
     }
     
     apr_dir_close(dir);
@@ -135,14 +139,14 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.log_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.run_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
     
-    agc_mutex_init(&runtime.uuid_mutex, SWITCH_MUTEX_NESTED, runtime.memory_pool);
-    agc_mutex_init(&runtime.global_mutex, SWITCH_MUTEX_NESTED, runtime.memory_pool);
+    agc_mutex_init(&runtime.uuid_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
+    agc_mutex_init(&runtime.global_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
     
     if (console) {
         runtime.console = stdout;
     }
     
-    #parse_yaml_config
+    //parse_yaml_config
     parse_config(err);
     
 }

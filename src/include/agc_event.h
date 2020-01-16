@@ -3,7 +3,6 @@
 
 #include <agc.h>
 
-AGC_BEGIN_EXTERN_C
 
 struct agc_event_header {
 	/*! the header name */
@@ -34,8 +33,4 @@ struct agc_event {
 };
 
 
-
-
-
-AGC_END_EXTERN_C
 #endif

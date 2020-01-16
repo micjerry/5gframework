@@ -4,8 +4,6 @@
 #include <agc.h>
 #include <math.h>
 
-AGC_BEGIN_EXTERN_C
-
 #define agc_yield(ms) agc_sleep(ms);
 
 /* https://code.google.com/p/stringencoders/wiki/PerformanceAscii 
@@ -178,5 +176,4 @@ static inline int _zstr(const char *s)
 AGC_DECLARE(const char *) agc_cut_path(const char *in);
 AGC_DECLARE(agc_bool_t) agc_is_number(const char *str);
 
-AGC_END_EXTERN_C
 #endif

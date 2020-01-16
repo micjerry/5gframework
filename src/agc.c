@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
             strcpy(AGC_GLOBAL_dirs.base_dir, local_argv[x]);
         }
         
-        else if  (!strcmp(local_argv[x], "-log")) {
+        else if (!strcmp(local_argv[x], "-log")) {
             x++;
             if (agc_strlen_zero(local_argv[x])) {
                 fprintf(stderr, "When using -log you must specify a log directory\n");
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
             strcpy(AGC_GLOBAL_dirs.log_dir, local_argv[x]);
         }
         
-        else if if  (!strcmp(local_argv[x], "-run")){
+        else if (!strcmp(local_argv[x], "-run")){
             x++;
             if (agc_strlen_zero(local_argv[x])) {
                 fprintf(stderr, "When using -run you must specify a run directory\n");

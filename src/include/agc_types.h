@@ -3,8 +3,6 @@
 
 #include <agc.h>
 
-AGC_BEGIN_EXTERN_C
-
 #define __AGC_FUNC__ (const char *)__func__
 
 #define AGC_SEQ_ESC "\033["
@@ -92,7 +90,6 @@ typedef struct agc_time_exp_t {
 
 typedef struct {
     unsigned char data[16];
-	/**< the actual UUID */
 } agc_uuid_t;
 
 typedef enum {
@@ -105,6 +102,10 @@ typedef struct apr_queue_t agc_queue_t;
 typedef struct apr_file_t agc_file_t;
 typedef int32_t agc_fileperms_t;
 typedef int agc_seek_where_t;
+typedef uint16_t agc_port_t;
+
+typedef int agc_os_socket_t;
+#define AGC_SOCK_INVALID -1
 
 typedef enum {
 	AGC_STATUS_SUCCESS,
@@ -133,7 +134,7 @@ typedef enum {
 	AGC_STATUS_TOO_LATE,
 	AGC_STATUS_XBREAK = 35,
 	AGC_STATUS_WINBREAK = 730035
-} apr_status_t;
+} agc_status_t;
 
 typedef enum {
 	AGC_EVENT_CUSTOM,
@@ -141,12 +142,28 @@ typedef enum {
 	AGC_EVENT_XXX
 } agc_event_types_t;
 
+typedef enum {
+    AGC_PRI_LOW = 1,
+    AGC_PRI_NORMAL = 10,
+    AGC_PRI_IMPORTANT = 50,
+    AGC_PRI_REALTIME = 99,
+} agc_thread_priority_t;
 
+typedef enum {
+    AGC_LOG_DEBUG = 7,
+    AGC_LOG_INFO = 6,
+    AGC_LOG_NOTICE = 5,
+    AGC_LOG_WARNING = 4,
+    AGC_LOG_ERROR = 3,
+    AGC_LOG_CRIT = 2,
+    AGC_LOG_ALERT = 1,
+    AGC_LOG_CONSOLE = 0,
+    AGC_LOG_INVALID = 64,
+    AGC_LOG_UNINIT = 1000,
+} agc_log_level_t;
 
+#define AGC_BLANK_STRING ""
 #define AGC_THREAD_STACKSIZE 240 * 1024
 #define AGC_DEFAULT_DIR_PERMS AGC_FPROT_UREAD | AGC_FPROT_UWRITE | AGC_FPROT_UEXECUTE | AGC_FPROT_GREAD | AGC_FPROT_GEXECUTE
-
-
-AGC_END_EXTERN_C
 
 #endif

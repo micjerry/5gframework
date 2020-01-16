@@ -8,7 +8,7 @@
 #endif
 #include <assert.h>
 
-
+/*
 int
 main(int argc, char *argv[])
 {
@@ -103,7 +103,7 @@ main(int argc, char *argv[])
                         }
                         
                         strcat(full_key, last_key);
-                        printf("YAML_SCALAR_TOKEN: key=%s, value=%s, style=%d\n", full_key, token.data.scalar.value);
+                        printf("YAML_SCALAR_TOKEN: key=%s, value=%s\n", full_key, token.data.scalar.value);
                     }
 				}
 				break;
@@ -121,3 +121,4 @@ main(int argc, char *argv[])
  
     return 0;
 }
+*/

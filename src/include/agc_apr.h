@@ -1,8 +1,7 @@
 #ifndef AGC_APR_H
 #define AGC_APR_H
 
-AGC_BEGIN_EXTERN_C
-
+#include "agc_types.h"
 #include <pthread.h>
 typedef pthread_t agc_thread_id_t;
 
@@ -585,11 +584,6 @@ AGC_DECLARE(agc_status_t) agc_dir_make(const char *path, agc_fileperms_t perm, a
 */
 AGC_DECLARE(agc_status_t) agc_dir_make_recursive(const char *path, agc_fileperms_t perm, agc_memory_pool_t *pool);
 
-struct agc_dir {
-	apr_dir_t *dir_handle;
-	apr_finfo_t finfo;
-};
-
 typedef struct agc_dir agc_dir_t;
 
 struct agc_array_header_t {
@@ -615,21 +609,6 @@ AGC_DECLARE(uint32_t) agc_dir_count(agc_dir_t *thedir);
 /** Opaque Thread structure. */
 typedef struct apr_thread_t agc_thread_t;
 
-#ifndef WIN32
-struct apr_threadattr_t {
-	apr_pool_t *pool;
-	pthread_attr_t attr;
-	int priority;
-};
-#else
-struct apr_threadattr_t {
-    apr_pool_t *pool;
-    apr_int32_t detach;
-    apr_size_t stacksize;
-	int priority;
-};
-#endif
-
 /** Opaque Thread attributes structure. */
 typedef struct apr_threadattr_t agc_threadattr_t;
 
@@ -637,7 +616,7 @@ typedef struct apr_threadattr_t agc_threadattr_t;
  * The prototype for any APR thread worker functions.
  * typedef void *(AGC_THREAD_FUNC *agc_thread_start_t)(agc_thread_t*, void*);
  */
-typedef void *(AGC_THREAD_FUNC * agc_thread_start_t) (agc_thread_t *, void *);
+typedef void *( * agc_thread_start_t) (agc_thread_t *, void *);
 
 //APR_DECLARE(apr_status_t) apr_threadattr_stacksize_set(apr_threadattr_t *attr, agc_size_t stacksize)
 AGC_DECLARE(agc_status_t) agc_threadattr_stacksize_set(agc_threadattr_t *attr, agc_size_t stacksize);
@@ -1132,5 +1111,5 @@ AGC_DECLARE(agc_status_t) agc_thread_join(agc_status_t *retval, agc_thread_t *th
 AGC_DECLARE(char *) agc_strerror(agc_status_t statcode, char *buf, agc_size_t bufsize);
 
 
-AGC_END_EXTERN_C
+
 #endif

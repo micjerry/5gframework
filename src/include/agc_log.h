@@ -3,21 +3,6 @@
 
 #include <agc.h>
 
-AGC_BEGIN_EXTERN_C
-
-typedef enum {
-	AGC_LOG_DEBUG = 7,
-	AGC_LOG_INFO = 6,
-	AGC_LOG_NOTICE = 5,
-	AGC_LOG_WARNING = 4,
-	AGC_LOG_ERROR = 3,
-	AGC_LOG_CRIT = 2,
-	AGC_LOG_ALERT = 1,
-	AGC_LOG_CONSOLE = 0,
-	AGC_LOG_INVALID = 64,
-	AGC_LOG_UNINIT = 1000,
-} agc_log_level_t;
-
 typedef enum {
 	AGC_ID_LOG,
 	AGC_ID_SESSION
@@ -64,6 +49,5 @@ AGC_DECLARE(agc_log_level_t) agc_log_str2level(const char *str);
 AGC_DECLARE(agc_log_node_t *) agc_log_node_dup(const agc_log_node_t *node);
 AGC_DECLARE(void) agc_log_node_free(agc_log_node_t **pnode);
                                 
-AGC_END_EXTERN_C
 
 #endif
