@@ -6,6 +6,7 @@ SUBDIRS = . src build
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 all-recursive: libagc.la
+clean-recusive: clean_core
 
 if SYSTEM_APR
 AM_LIBAPR_CFLAGS := $(shell apr-1-config --cflags)
@@ -56,6 +57,9 @@ CLEANFILES    = src/include/agc_version.h src/include/agc_am_config.h
 ##
 ## libagc
 ##
+
+BUILT_SOURCES = src/mod/modules.inc src/include/agc_version.h
+
 lib_LTLIBRARIES = libagc.la
 
 library_includedir      = $(includedir)
@@ -87,7 +91,7 @@ libagc_la_SOURCES = \
 libagc_la_CFLAGS  = $(CORE_CFLAGS)
 libagc_la_LDFLAGS = -version-info 1:0:0 $(AM_LDFLAGS) -no-undefined
 libagc_la_LIBADD = $(CORE_LIBS) $(APR_LIBS) $(YAML_LIBS)
-
+libagc_la_DEPENDENCIES = $(BUILT_SOURCES)
 ##
 ## Applications
 ##
@@ -132,6 +136,43 @@ $(OUR_MODULES): $(agc_builddir)/modules.conf liagc.la src/mod/modules.inc
 	   || case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
 	test -z "$$fail"
 
+modules: libagc.la $(agc_builddir)/modules.conf src/mod/modules.inc
+	@cd src/mod && $(MAKE) $(AM_MAKEFLAGS)
+
+install_mod: libagc.la $(agc_builddir)/modules.conf src/mod/modules.inc
+	@cd src/mod && $(MAKE) $(AM_MAKEFLAGS) install
+
+
+##
+## Helper targets
+##
+
+core: $(agc_builddir)/modules.conf src/include/agc_version.h $(CORE_LIBS) 
+	$(MAKE) $(AM_MAKEFLAGS) libagc.la
+
+core-install: core_install
+core_install: install-libLTLIBRARIES
+
+clean_core: clean-libLTLIBRARIES
+	rm -f $(libagc_la_OBJECTS)
+	rm -f `echo $(libagc_la_OBJECTS) | sed -e's|.lo|.o|g'`
+	rm -f src/mod/modules.inc
+
+.DEFAULT: $(agc_builddir)/modules.conf src/mod/modules.inc
+    @target=`echo $@ | sed -e 's|^.*-||'`; \
+    target_prefix=`echo $@ | sed -e 's|-.*$$||'`; \
+    args="$@"; \
+    if test -z "$$args" || test "$${args#-l*}" = "$$args"; then \
+        if test "$$target" = "install"; then \
+            $(MAKE) $(AM_MAKEFLAGS) core_install && cd src/mod && $(MAKE) $(AM_MAKEFLAGS) $@ ; \
+        else \
+            if test "$$target" = "clean"; then \
+                cd src/mod && $(MAKE) $(AM_MAKEFLAGS) $@ ;\
+            else \
+                $(MAKE) $(AM_MAKEFLAGS) core && cd src/mod && $(MAKE) $(AM_MAKEFLAGS) $@ ;\
+            fi; \
+        fi; \
+    fi
 
 MAINTAINERCLEANFILES = Makefile.in
 MOSTLYCLEANFILES = core *.stackdump

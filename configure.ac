@@ -43,18 +43,50 @@ esac
 AC_SUBST(OSCPPFLAGS)
 AC_SUBST(OSDIR)
 
-AH_TOP([
-#ifndef __AGC_CONFIG_H__
-#define __AGC_CONFIG_H__
-/* need this, because some autoconf tests rely on this (e.g. stpcpy)
- * and it should be used for new programs  */
-#define _DEFAULT_SOURCE 1
-#define _BSD_SOURCE  	1
-])
+#######################################
+####     Checks for arguments.     ####
+#######################################
 
-AH_BOTTOM([
-#endif /* __AGC_CONFIG_H__ */
-])
+rundir="${prefix}/run"
+logdir="${prefix}/log"
+confdir="${prefix}/conf"
+
+default_runtimedir="$rundir"
+default_logfiledir="$logdir"
+default_certsdir="${prefix}/certs"
+default_moddir="${prefix}/mod"
+
+
+AC_ARG_WITH([rundir],
+    [AS_HELP_STRING([--with-rundir=DIR], [Put pidfile into this location (default: $prefix/run)])], [runtimedir="$withval"], [runtimedir="${default_runtimedir}"])
+AC_SUBST(runtimedir)
+AC_DEFINE_UNQUOTED([AGC_RUN_DIR],"${runtimedir}",[where to put pidfile to])
+
+AC_ARG_WITH([logfiledir],
+    [AS_HELP_STRING([--with-logfiledir=DIR], [Put logfiles into this location (default: $localstatedir/log)])], [logfiledir="$withval"], [logfiledir="${default_logfiledir}"])
+AC_SUBST(logfiledir)
+AC_DEFINE_UNQUOTED([AGC_LOG_DIR],"${logfiledir}",[where to put log files])
+
+AC_ARG_WITH([certsdir],
+    [AS_HELP_STRING([--with-certsdir=DIR], [Put certs files into this location (default: $prefix/certs)])], [certsdir="$withval"], [certsdir="${default_certsdir}"])
+AC_SUBST(certsdir)
+AC_DEFINE_UNQUOTED([AGC_CERTS_DIR],"${certsdir}",[where to put certs files])
+
+AC_ARG_WITH([modinstdir],
+    [AS_HELP_STRING([--with-modinstdir=DIR], [Install modules into this location (default: $prefix/mod)])], [modulesdir="$withval"], [modulesdir="${default_modulesdir}"])
+eval modulesdir="${modulesdir}"
+AC_SUBST(modulesdir)
+AC_DEFINE_UNQUOTED([AGC_MOD_DIR],"${modulesdir}",[where to install the modules to])
+
+
+AC_SUBST(confdir)
+AC_DEFINE_UNQUOTED([AGC_CONF_DIR],"${confdir}",[directory for configuration files])
+
+AC_DEFINE_UNQUOTED([AGC_PREFIX_DIR],"${prefix}",[directory for base])
+
+#######################################
+####  Checks for gcc and headers.  ####
+#######################################
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
@@ -203,6 +235,8 @@ OUR_DISABLED_UNINSTALL_MODS='$$(tmp_mods="$(CONF_DISABLED_MODULES)"; mods="$$(fo
 #AM_MAKEFLAGS='"OUR_MODULES=$(OUR_MODS)" "OUR_CLEAN_MODULES=$(OUR_CLEAN_MODS)" "OUR_INSTALL_MODULES=$(OUR_INSTALL_MODS)" "OUR_UNINSTALL_MODULES=$(OUR_UNINSTALL_MODS)" "OUR_DISABLED_MODULES=$(OUR_DISABLED_MODS)" "OUR_DISABLED_CLEAN_MODULES=$(OUR_DISABLED_CLEAN_MODS)" "OUR_DISABLED_INSTALL_MODULES=$(OUR_DISABLED_INSTALL_MODS)" "OUR_DISABLED_UNINSTALL_MODULES=$(OUR_DISABLED_UNINSTALL_MODS)" `test -n "$(VERBOSE)" || echo -s`'
 #AM_MAKEFLAGS='`test -n "$(VERBOSE)" || echo -s`'
 
+AC_SUBST(CONF_MODULES)
+AC_SUBST(CONF_DISABLED_MODULES)
 AC_SUBST(OUR_MODS)
 AC_SUBST(OUR_CLEAN_MODS)
 AC_SUBST(OUR_INSTALL_MODS)
@@ -232,13 +266,17 @@ AC_CONFIG_FILES([src/include/agc_am_config.h])
 AC_CONFIG_FILES([Makefile
         build/Makefile
         src/Makefile
-        src/mod/Makefile])
+        src/mod/Makefile
+        src/mod/loggers/mod_log/Makefile])
 AC_OUTPUT
 
 echo 
 echo "------------------AGC configuration-------------"
 echo "source code location    : ${srcdir}"
 echo "compiler                : ${CC}"
+echo "build location          : ${agc_builddir}"
+echo "modules                 : ${OUR_MODS}"
+echo "confmodules             : ${CONF_MODULES}"
 echo "agc compiler flags      : ${AGC_AM_CFLAGS}"
 echo "yml compile flags       : ${YAML_CFLAGS}"
 echo "agc linker flags:       : ${AGC_AM_LDFLAGS}"

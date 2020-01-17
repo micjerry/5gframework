@@ -23,8 +23,11 @@ $(OUR_MODULES) $(OUR_CLEAN_MODULES) $(OUR_INSTALL_MODULES) $(OUR_UNINSTALL_MODUL
 		fi ; \
 	fi ; \
 	if test -z "$$target" ; then target="all" ; fi ; \
-	if ! test -f $$moddir/$$modname.c && ! test -f $$moddir/$$modname.cpp && test $$modname != "mod_com_g729" ;	\
-	then echo ; echo "WARNING $$modname is not a valid module dir, skipping it..." ; else \
+	if ! test -f $$moddir/$$modname.c && ! test -f $$moddir/$$modname.cpp ;	\
+	then \
+		echo ; \
+		echo "WARNING $$modname is not a valid module dir, skipping it..." ; \
+	else \
 		echo ;\
 		echo making $$target $$modname ;\
 		test -d "$$buildmoddir" || mkdir -p $$buildmoddir ; \
