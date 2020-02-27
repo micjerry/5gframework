@@ -245,7 +245,7 @@ AGC_DECLARE(agc_status_t) agc_log_bind_logger(agc_log_function_t function, agc_l
     agc_log_binding_t *binding = NULL, *ptr = NULL;
     agc_assert(function != NULL);
     
-    if (!(binding = agc_core_alloc(LOG_MEMORY_POOL, sizeof(*binding)))) {
+    if (!(binding = agc_memory_alloc(LOG_MEMORY_POOL, sizeof(*binding)))) {
 		return AGC_STATUS_MEMERR;
 	}
     

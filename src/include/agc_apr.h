@@ -1111,5 +1111,169 @@ AGC_DECLARE(agc_status_t) agc_thread_join(agc_status_t *retval, agc_thread_t *th
 AGC_DECLARE(char *) agc_strerror(agc_status_t statcode, char *buf, agc_size_t bufsize);
 
 
+#define AGC_HASH_KEY_STRING   (-1)
+
+//Abstract type for hash tables.
+typedef struct apr_hash_t agc_hash_t;
+
+//Abstract type for scanning hash tables.
+typedef struct apr_hash_index_t agc_hash_index_t;
+
+//Callback functions for calculating hash values.
+typedef unsigned int(* agc_hashfunc_t) (const char *key, agc_ssize_t *klen);
+
+/**
+ * Declaration prototype for the iterator callback function of agc_hash_do()..
+ * @param rec	The data passed as the first argument to apr_hash_[v]do().
+ * @param key	The key from this iteration of the hash table.
+ * @param klen	The key length from this iteration of the hash table.
+ * @param value	The value from this iteration of the hash table.
+ * @remark Iteration continues while this callback function returns non-zero. To export the callback function for 
+ *         agc_hash_do() it must be declared in the _NONSTD convention.
+ */
+typedef int( agc_hash_do_callback_fn_t) (void *rec, const void *key, agc_ssize_t klen, const void *value);
+
+/**
+ * Create a hash table.
+ * @param pool	The pool to allocate the hash table out of.
+ * @returns The hash table just created
+ */
+AGC_DECLARE(agc_hash_t *) agc_hash_make(agc_memory_pool_t *pool);
+
+/**
+ * Create a hash table with a custom hash function.
+ * @param pool	The pool to allocate the hash table out of.
+ * @param hash_func	A custom hash function.
+ * @returns The hash table just created.
+ */
+AGC_DECLARE(agc_hash_t *) agc_hash_make_custom(agc_memory_pool_t *pool, agc_hashfunc_t hash_func);
+
+/**
+ * Make a copy of a hash table.
+ * @param pool	The pool from which to allocate the new hash table.
+ * @param h	The hash table to clone.
+ * @returns The hash table just created.
+ */
+AGC_DECLARE(agc_hash_t *) agc_hash_copy(agc_memory_pool_t *pool, const agc_hash_t *h);
+
+/**
+ * Associate a value with a key in a hash table.
+ * @param ht	The hash table.
+ * @param key	Pointer to the key.
+ * @param klen	Length of the key. Can be AGC_HASH_KEY_STRING to use the string length. 
+ * @param val	Value to associate with the key
+ * @remark If the value is NULL the hash entry is deleted. 
+ *         The key is stored as is, and so must have a lifetime at least as long as. 
+ *         the hash table's pool. 
+ */
+AGC_DECLARE(void) agc_hash_set(agc_hash_t *ht, const void *key, agc_ssize_t klen, const void *val);
+
+/**
+ * Look up the value associated with a key in a hash table.
+ * @param ht	The hash table.
+ * @param key	Pointer to the key.
+ * @param klen	Length of the key. Can be AGC_HASH_KEY_STRING to use the string length. 
+ * @returns Returns NULL if the key is not present.
+ */
+AGC_DECLARE(void *) agc_hash_get(agc_hash_t *ht, const void *key, agc_ssize_t klen);
+
+/**
+ * Start iterating over the entries in a hash table.
+ * @param p	The pool to allocate the agc_hash_index_t iterator. If this pool is NULL, then an internal, non-thread-safe
+ *        iterator is used.
+ * @param ht	The hash table.
+ * @returns The iteration state.
+ * @remark There is no restriction on adding or deleting hash entries during an iteration (although the results may be 
+ *         unpredictable unless all you do is delete the current entry) and multiple iterations can be in progress at 
+ *         the same time. 
+ */
+AGC_DECLARE(agc_hash_index_t *)	agc_hash_first(agc_memory_pool_t *p, agc_hash_t *ht);
+
+/**
+ * Continue iterating over the entries in a hash table.
+ * @param hi	The iteration state.
+ * @returns a pointer to the updated iteration state. NULL if there are no more entries.
+ */
+AGC_DECLARE(agc_hash_index_t *) agc_hash_next(agc_hash_index_t *hi);
+
+/**
+ * Get the current entry's details from the iteration state.
+ * @param hi	The iteration state.
+ * @param key   Return pointer for the pointer to the key.
+ * @param klen  Return pointer for the key length.
+ * @param val	Return pointer for the associated value.
+ * @remark The return pointers should point to a variable that will be set to the corresponding data, or they may be NULL 
+ *         if the data isn't interesting.
+ */
+AGC_DECLARE(void) agc_hash_this(agc_hash_index_t *hi, const void **key, agc_ssize_t *klen, void **val);
+
+/**
+ * Get the current entry's key from the iteration state.
+ * @param hi	The iteration state.
+ * @returns The pointer to the key.
+ */
+AGC_DECLARE(const void *) agc_hash_this_key(agc_hash_index_t *hi);
+
+/**
+ * Get the current entry's key length from the iteration state.
+ * @param hi	The iteration state.
+ * @returns The key length.
+ */
+AGC_DECLARE(agc_ssize_t) agc_hash_this_key_len(agc_hash_index_t *hi);
+
+/**
+ * Get the current entry's value from the iteration state.
+ * @param hi	The iteration state.
+ * @returns The pointer to the value.
+ */
+AGC_DECLARE(void *) agc_hash_this_val(agc_hash_index_t *hi);
+
+/**
+ * Get the number of key/value pairs in the hash table.
+ * @param ht	The hash table.
+ * @returns The number of key/value pairs in the hash table.
+ */
+AGC_DECLARE(unsigned int) agc_hash_count(agc_hash_t *ht);
+
+/**
+ * Clear any key/value pairs in the hash table.
+ * @param ht	The hash table.
+ */
+AGC_DECLARE(void) agc_hash_clear(agc_hash_t *ht);
+
+/**
+ * Merge two hash tables into one new hash table. The values of the overlay hash override the values 
+ * of the base if both have the same key. Both hash tables must use the same hash function.
+ * @param p	The pool to use for the new hash table.
+ * @param overlay	The table to add to the initial table.
+ * @param base	The table that represents the initial values of the new table.
+ * @returns A new hash table containing all of the data from the two passed in.
+ */
+AGC_DECLARE(agc_hash_t *) agc_hash_overlay (agc_memory_pool_t *p, const agc_hash_t *overlay, const agc_hash_t *base);
+
+/**
+ * Merge two hash tables into one new hash table. If the same key is present in both tables, call the supplied merge 
+ * function to produce a merged value for the key in the new table. Both hash tables must use the same hash function.
+ * @param p	The pool to use for the new hash table.
+ * @param h1	The first of the tables to merge.
+ * @param h2	The second of the tables to merge.
+ * @param merger	A callback function to merge values, or NULL to make values from h1 override values from h2 (same 
+ *        semantics as apr_hash_overlay()).
+ * @param data	Client data to pass to the merger function.
+ * @returns A new hash table containing all of the data from the two passed in.
+ */
+AGC_DECLARE(agc_hash_t *) agc_hash_merge(agc_memory_pool_t *p, const agc_hash_t *h1, const agc_hash_t *h2, void *(*merger)(agc_memory_pool_t *p, const void *key, agc_ssize_t klen, const void *h1_val, const void *h2_val, const void *data), const void *data);
+
+/**
+ * Iterate over a hash table running the provided function once for every element in the hash table.  
+ * @param comp	function will be invoked for every element in the hash table.
+ * @param rec	The data to pass as the first argument to the function.
+ * @param ht	The hash table to iterate over.
+ * @returns FALSE if one of the comp() iterations returned zero; TRUE if all iterations returned non-zero.
+ */
+AGC_DECLARE(int) agc_hash_do(agc_hash_do_callback_fn_t *comp, void *rec, const agc_hash_t *ht);
+
+//Get a pointer to the pool which the hash table was created in.
+AGC_DECLARE(agc_memory_pool_t *) agc_hash_pool_get (const agc_hash_t *thehash);
 
 #endif

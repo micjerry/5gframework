@@ -160,7 +160,11 @@ AGC_DECLARE(void) agc_core_set_globals(void)
         if (AGC_GLOBAL_dirs.base_dir) {
             agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s%smod", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
         } else {
+#ifdef AGC_MOD_DIR
+            agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s", AGC_MOD_DIR);
+#else
             agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s%smod", base_dir, AGC_PATH_SEPARATOR);
+#endif
         }
     }
     
@@ -168,7 +172,11 @@ AGC_DECLARE(void) agc_core_set_globals(void)
         if (AGC_GLOBAL_dirs.base_dir) {
             agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s%sconf", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
         } else {
+#ifdef AGC_CONF_DIR
+            agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s", AGC_CONF_DIR);
+#else
             agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s%sconf", base_dir, AGC_PATH_SEPARATOR);
+#endif
         }
     }  
     
@@ -176,7 +184,11 @@ AGC_DECLARE(void) agc_core_set_globals(void)
         if (AGC_GLOBAL_dirs.base_dir) {
             agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s%slog", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
         } else {
+#ifdef AGC_LOG_DIR
+            agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s", AGC_LOG_DIR);
+#else
             agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s%slog", base_dir, AGC_PATH_SEPARATOR);
+#endif            
         }
     }
 
@@ -184,7 +196,11 @@ AGC_DECLARE(void) agc_core_set_globals(void)
         if (AGC_GLOBAL_dirs.base_dir) {
             agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s%srun", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
         } else {
+#ifdef AGC_RUN_DIR
+            agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s", AGC_RUN_DIR);
+#else
             agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s%srun", base_dir, AGC_PATH_SEPARATOR);
+#endif 
         }
     } 
 
@@ -192,7 +208,11 @@ AGC_DECLARE(void) agc_core_set_globals(void)
         if (AGC_GLOBAL_dirs.base_dir) {
             agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s%scerts", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
         } else {
+#ifdef AGC_CERTS_DIR
+            agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s", AGC_CERTS_DIR);
+#else
             agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s%scerts", base_dir, AGC_PATH_SEPARATOR);
+#endif
         }
     }      
     

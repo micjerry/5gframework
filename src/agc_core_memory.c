@@ -1,8 +1,6 @@
 #include <agc.h>
 #include "private/agc_core_pvt.h"
 
-#define PER_POOL_LOCK 1
-
 static struct {
 	agc_queue_t *pool_queue;
 	agc_queue_t *pool_recycle_queue;
@@ -26,12 +24,7 @@ static void *pool_thread(agc_thread_t *thread, void *obj)
 					done = 1;
 					break;
 				}
-                
-#if defined(PER_POOL_LOCK) 
                 apr_pool_destroy(pop);
-#else
-                //apr_pool_mutex_set(pop, NULL);
-#endif
                 x--;
             }
             
@@ -57,14 +50,11 @@ static void *pool_thread(agc_thread_t *thread, void *obj)
 agc_memory_pool_t *agc_core_memory_init(void)
 {
     agc_threadattr_t *thd_attr;
-#ifdef PER_POOL_LOCK
 	apr_allocator_t *my_allocator = NULL;
 	apr_thread_mutex_t *my_mutex;
-#endif
 
     memset(&memory_manager, 0, sizeof(memory_manager));
     
-#ifdef PER_POOL_LOCK
     if ((apr_allocator_create(&my_allocator)) != APR_SUCCESS) {
 		abort();
 	}
@@ -82,11 +72,7 @@ agc_memory_pool_t *agc_core_memory_init(void)
 	apr_allocator_mutex_set(my_allocator, my_mutex);
 	//apr_pool_mutex_set(memory_manager.memory_pool, my_mutex);
 	apr_allocator_owner_set(my_allocator, memory_manager.memory_pool);
-	apr_pool_tag(memory_manager.memory_pool, "core_pool");
-#else
-    apr_pool_create(&memory_manager.memory_pool, NULL);
-	agc_assert(memory_manager.memory_pool != NULL);
-#endif    
+	apr_pool_tag(memory_manager.memory_pool, "core_pool");  
 
     agc_queue_create(&memory_manager.pool_queue, 50000, memory_manager.memory_pool);
 	agc_queue_create(&memory_manager.pool_recycle_queue, 50000, memory_manager.memory_pool);
@@ -103,7 +89,12 @@ agc_memory_pool_t *agc_core_memory_init(void)
     return memory_manager.memory_pool;
 }
 
-AGC_DECLARE(agc_status_t) agc_core_destroy_memory_pool(agc_memory_pool_t **pool)
+AGC_DECLARE(void) agc_memory_pool_tag(agc_memory_pool_t *pool, const char *tag)
+{
+    apr_pool_tag(pool, tag);
+}
+
+AGC_DECLARE(agc_status_t) agc_memory_destroy_pool(agc_memory_pool_t **pool)
 {
     agc_assert(pool != NULL);
 
@@ -119,7 +110,7 @@ AGC_DECLARE(agc_status_t) agc_core_destroy_memory_pool(agc_memory_pool_t **pool)
     return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(agc_status_t) agc_core_new_memory_pool(agc_memory_pool_t **pool)
+AGC_DECLARE(agc_status_t) agc_memory_create_pool(agc_memory_pool_t **pool)
 {
     apr_allocator_t *my_allocator = NULL;
     apr_thread_mutex_t *my_mutex;
@@ -141,11 +132,11 @@ AGC_DECLARE(agc_status_t) agc_core_new_memory_pool(agc_memory_pool_t **pool)
     apr_allocator_mutex_set(my_allocator, my_mutex);
     apr_allocator_owner_set(my_allocator, *pool);
 
-    //apr_pool_mutex_set(*pool, my_mutex);
+    //TODO apr_pool_mutex_set(*pool, my_mutex);
     return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(void *) agc_core_alloc(agc_memory_pool_t *pool, agc_size_t memory)
+AGC_DECLARE(void *) agc_memory_alloc(agc_memory_pool_t *pool, agc_size_t memory)
 {
     void *ptr = NULL;
 
@@ -158,9 +149,30 @@ AGC_DECLARE(void *) agc_core_alloc(agc_memory_pool_t *pool, agc_size_t memory)
     return ptr;
 }
 
-AGC_DECLARE(void) agc_core_memory_pool_set_data(agc_memory_pool_t *pool, const char *key, void *data)
+AGC_DECLARE(void) agc_memory_pool_set_data(agc_memory_pool_t *pool, const char *key, void *data)
 {
     apr_pool_userdata_set(data, key, NULL, pool);
 }
 
+AGC_DECLARE(void *) agc_memory_pool_get_data(agc_memory_pool_t *pool, const char *key)
+{
+    void *data = NULL;
+
+	apr_pool_userdata_get(&data, key, pool);
+
+	return data;
+}
+
+AGC_DECLARE(void *) agc_memory_permanent_alloc(agc_size_t memsize)
+{
+    void *ptr = NULL;
+	agc_assert(memory_manager.memory_pool != NULL);
+    
+    ptr = apr_palloc(memory_manager.memory_pool, memsize);
+    
+    agc_assert(ptr != NULL);
+	memset(ptr, 0, memsize);
+    
+    return ptr;   
+}
 

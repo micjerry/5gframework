@@ -422,7 +422,7 @@ AGC_DECLARE(agc_status_t) agc_directory_exists(const char *dirname, agc_memory_p
 	agc_status_t status;
 
 	if (!pool) {
-		agc_core_new_memory_pool(&our_pool);
+		agc_memory_create_pool(&our_pool);
 		pool = our_pool;
 	}
 
@@ -431,7 +431,7 @@ AGC_DECLARE(agc_status_t) agc_directory_exists(const char *dirname, agc_memory_p
 	}
 
 	if (our_pool) {
-		agc_core_destroy_memory_pool(&our_pool);
+		agc_memory_destroy_pool(&our_pool);
 	}
 
 	return status;
@@ -449,7 +449,7 @@ AGC_DECLARE(agc_status_t) agc_file_exists(const char *filename, agc_memory_pool_
 	}
 
 	if (!pool) {
-		agc_core_new_memory_pool(&our_pool);
+		agc_memory_create_pool(&our_pool);
 	}
 
 	apr_stat(&info, filename, wanted, pool ? pool : our_pool);
@@ -458,7 +458,7 @@ AGC_DECLARE(agc_status_t) agc_file_exists(const char *filename, agc_memory_pool_
 	}
 
 	if (our_pool) {
-		agc_core_destroy_memory_pool(&our_pool);
+		agc_memory_destroy_pool(&our_pool);
 	}
 
 	return status;
@@ -608,7 +608,7 @@ AGC_DECLARE(agc_status_t) agc_thread_create(agc_thread_t ** new_thread, agc_thre
 													 agc_thread_start_t func, void *data, agc_memory_pool_t *cont)
 {
 	agc_status_t status;
-	agc_core_memory_pool_set_data(cont, "_in_thread", TT_KEY);
+	agc_memory_pool_set_data(cont, "_in_thread", TT_KEY);
 	status = apr_thread_create(new_thread, attr, func, data, cont);
 	return status;
 }
@@ -1229,4 +1229,93 @@ AGC_DECLARE(void) agc_sleep(agc_interval_time_t t)
 {
     apr_sleep(t);
     return;
+}
+
+AGC_DECLARE(agc_hash_t *) agc_hash_make(agc_memory_pool_t *pool)
+{
+    return apr_hash_make(pool);
+}
+
+AGC_DECLARE(agc_hash_t *) agc_hash_make_custom(agc_memory_pool_t *pool, agc_hashfunc_t hash_func)
+{
+    return apr_hash_make_custom(pool, hash_func);
+}
+
+AGC_DECLARE(agc_hash_t *) agc_hash_copy(agc_memory_pool_t *pool, const agc_hash_t *h)
+{
+    return apr_hash_copy(pool, h);
+}
+
+AGC_DECLARE(void) agc_hash_set(agc_hash_t *ht, const void *key, agc_ssize_t klen, const void *val)
+{
+    return apr_hash_set(ht, key, klen, val);
+}
+
+AGC_DECLARE(void *) apr_hash_get(agc_hash_t *ht, const void *key, agc_ssize_t klen)
+{
+    return apr_hash_get(ht, key, klen);
+}
+
+AGC_DECLARE(agc_hash_index_t *)	agc_hash_first(agc_memory_pool_t *p, agc_hash_t *ht)
+{
+    return apr_hash_first(p, ht);
+}
+
+AGC_DECLARE(agc_hash_index_t *) agc_hash_next(agc_hash_index_t *hi)
+{
+    return apr_hash_next(hi);
+}
+
+AGC_DECLARE(void) agc_hash_this(agc_hash_index_t *hi, const void **key, agc_ssize_t *klen, void **val)
+{
+    return apr_hash_this(hi, key, klen, val);
+}
+
+AGC_DECLARE(const void *) agc_hash_this_key(agc_hash_index_t *hi)
+{
+    return apr_hash_this_key(hi);
+}
+
+AGC_DECLARE(agc_ssize_t) agc_hash_this_key_len(agc_hash_index_t *hi)
+{
+    return apr_hash_this_key_len(hi);
+}
+
+AGC_DECLARE(void *) agc_hash_this_val(agc_hash_index_t *hi)
+{
+    return apr_hash_this_val(hi);
+}
+
+AGC_DECLARE(unsigned int) agc_hash_count(agc_hash_t *ht)
+{
+    return apr_hash_count(ht);
+}
+
+AGC_DECLARE(void) agc_hash_clear(agc_hash_t *ht)
+{
+    return apr_hash_clear(ht);
+}
+
+AGC_DECLARE(agc_hash_t *) agc_hash_overlay (agc_memory_pool_t *p, const agc_hash_t *overlay, const agc_hash_t *base)
+{
+    return apr_hash_overlay(p, overlay, base);
+}
+
+AGC_DECLARE(agc_hash_t *) agc_hash_merge(agc_memory_pool_t *p, 
+                                         const agc_hash_t *h1, 
+                                         const agc_hash_t *h2, 
+                                         void *(*merger)(agc_memory_pool_t *p, const void *key, agc_ssize_t klen, const void *h1_val, const void *h2_val, const void *data), 
+                                         const void *data)
+{
+    return apr_hash_merge(p, h1, h2, merger, data);
+}
+
+AGC_DECLARE(int) agc_hash_do(agc_hash_do_callback_fn_t *comp, void *rec, const agc_hash_t *ht)
+{
+    return apr_hash_do(comp, rec, ht);
+}
+
+AGC_DECLARE(agc_memory_pool_t *) agc_hash_pool_get (const agc_hash_t *thehash)
+{
+    return apr_hash_pool_get(thehash);
 }

@@ -1,6 +1,8 @@
 #ifndef AGC_FUCK_H
 #define AGC_FUCK_H
 
+#include <agc_am_config.h>
+
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
@@ -25,6 +27,6 @@
 #include "agc_utils.h"
 #include "agc_log.h"
 #include "agc_core.h"
+#include "agc_memory.h"
 
 #endif
-

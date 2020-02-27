@@ -52,8 +52,6 @@ AM_CFLAGS   = $(AGC_AM_CFLAGS) $(YAML_CFLAGS)
 AM_CPPFLAGS = $(AGC_AM_CXXFLAGS)
 AM_LDFLAGS  = $(AGC_AM_LDFLAGS) $(AM_LIBAPR_LDFLAGS) $(AM_LIBAPU_LDFLAGS)
 
-CLEANFILES    = src/include/agc_version.h src/include/agc_am_config.h
-
 ##
 ## libagc
 ##
@@ -72,6 +70,7 @@ library_include_HEADERS = \
 	src/include/agc_platform.h \
 	src/include/agc_types.h \
 	src/include/agc_utils.h \
+	src/include/agc_memory.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -156,7 +155,6 @@ core_install: install-libLTLIBRARIES
 clean_core: clean-libLTLIBRARIES
 	rm -f $(libagc_la_OBJECTS)
 	rm -f `echo $(libagc_la_OBJECTS) | sed -e's|.lo|.o|g'`
-	rm -f src/mod/modules.inc
 
 .DEFAULT: $(agc_builddir)/modules.conf src/mod/modules.inc
     @target=`echo $@ | sed -e 's|^.*-||'`; \
