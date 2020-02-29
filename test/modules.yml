@@ -1,0 +1,6 @@
+modules:
+    - path    : logger
+      name    : mod_log
+    - path    : application
+      name    : mod_conf
+

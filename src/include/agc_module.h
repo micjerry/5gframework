@@ -3,6 +3,8 @@
 
 #include <agc.h>
 
+#define CFG_MODULES_FILE "modules.yml"
+
 struct agc_loadable_module_interface {
 	int nothing;
 };
@@ -18,9 +20,9 @@ typedef agc_status_t (*agc_module_load_func) AGC_MODULE_LOAD_ARGS;
 typedef agc_status_t (*agc_module_runtime_func) AGC_MODULE_RUNTIME_ARGS;
 typedef agc_status_t (*agc_module_shutdown_func) AGC_MODULE_SHUTDOWN_ARGS;
 
-#define AGC_MODULE_LOAD_FUNCTION(name) switch_status_t name AGC_MODULE_LOAD_ARGS
-#define AGC_MODULE_RUNTIME_FUNCTION(name) switch_status_t name AGC_MODULE_RUNTIME_ARGS
-#define AGC_MODULE_SHUTDOWN_FUNCTION(name) switch_status_t name AGC_MODULE_SHUTDOWN_ARGS
+#define AGC_MODULE_LOAD_FUNCTION(name) agc_status_t name AGC_MODULE_LOAD_ARGS
+#define AGC_MODULE_RUNTIME_FUNCTION(name) agc_status_t name AGC_MODULE_RUNTIME_ARGS
+#define AGC_MODULE_SHUTDOWN_FUNCTION(name) agc_status_t name AGC_MODULE_SHUTDOWN_ARGS
 
 typedef uint32_t agc_module_flag_t;
 
@@ -45,6 +47,9 @@ agc_loadable_module_function_table_t name##_module_interface = {	\
 #define AGC_MODULE_DEFINITION(name, load, shutdown, runtime)								\
 		AGC_MODULE_DEFINITION_EX(name, load, shutdown, runtime, 0)
 
+AGC_DECLARE(agc_status_t) agc_loadable_module_init(agc_bool_t autoload);
+
+AGC_DECLARE(void) agc_loadable_module_shutdown(void);
 
 
 #endif

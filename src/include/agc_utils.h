@@ -175,6 +175,19 @@ static inline int _zstr(const char *s)
 #define agc_safe_free(it) if (it) {free(it);it=NULL;}
 #define agc_set_string(_dst, _src) agc_copy_string(_dst, _src, sizeof(_dst))
 
+static inline int agc_true(const char *expr)
+{
+	return ((expr && ( !strcasecmp(expr, "yes") ||
+					   !strcasecmp(expr, "on") ||
+					   !strcasecmp(expr, "true") ||
+					   !strcasecmp(expr, "t") ||
+					   !strcasecmp(expr, "enabled") ||
+					   !strcasecmp(expr, "active") ||
+					   !strcasecmp(expr, "allow") ||
+					   (agc_is_number(expr) && atoi(expr)))) ? AGC_TRUE : AGC_FALSE);
+}
+
+
 AGC_DECLARE(const char *) agc_cut_path(const char *in);
 AGC_DECLARE(agc_bool_t) agc_is_number(const char *str);
 
