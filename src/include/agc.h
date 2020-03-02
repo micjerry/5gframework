@@ -28,5 +28,6 @@
 #include "agc_log.h"
 #include "agc_core.h"
 #include "agc_memory.h"
+#include "agc_module.h"
 
 #endif

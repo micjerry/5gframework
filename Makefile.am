@@ -71,6 +71,8 @@ library_include_HEADERS = \
 	src/include/agc_types.h \
 	src/include/agc_utils.h \
 	src/include/agc_memory.h \
+	src/include/agc_module.h \
+	src/include/agc_dso.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -85,6 +87,8 @@ libagc_la_SOURCES = \
 	src/agc_log.c \
 	src/agc_time.c \
 	src/agc_utils.c \
+	src/agc_module.c \
+	src/agc_dso.c \
 	$(NULL)
 
 libagc_la_CFLAGS  = $(CORE_CFLAGS)

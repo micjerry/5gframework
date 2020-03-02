@@ -614,7 +614,7 @@ typedef struct apr_threadattr_t agc_threadattr_t;
 
 /**
  * The prototype for any APR thread worker functions.
- * typedef void *(AGC_THREAD_FUNC *agc_thread_start_t)(agc_thread_t*, void*);
+ * typedef void *(*agc_thread_start_t)(agc_thread_t*, void*);
  */
 typedef void *( * agc_thread_start_t) (agc_thread_t *, void *);
 

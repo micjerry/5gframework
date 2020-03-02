@@ -6,7 +6,10 @@
 #define CFG_MODULES_FILE "modules.yml"
 
 struct agc_loadable_module_interface {
-	int nothing;
+    const char *module_name;
+    agc_thread_rwlock_t *rwlock;
+	int refs;
+    agc_memory_pool_t *pool;
 };
 
 typedef struct agc_loadable_module_interface agc_loadable_module_interface_t;
@@ -47,7 +50,7 @@ agc_loadable_module_function_table_t name##_module_interface = {	\
 #define AGC_MODULE_DEFINITION(name, load, shutdown, runtime)								\
 		AGC_MODULE_DEFINITION_EX(name, load, shutdown, runtime, 0)
 
-AGC_DECLARE(agc_status_t) agc_loadable_module_init(agc_bool_t autoload);
+AGC_DECLARE(agc_status_t) agc_loadable_module_init();
 
 AGC_DECLARE(void) agc_loadable_module_shutdown(void);
 

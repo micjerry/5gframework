@@ -5,6 +5,8 @@ struct agc_loadable_module {
 	char *key;
 	char *filename;
 	int perm;
+    agc_loadable_module_interface *module_interface;
+    agc_dso_lib_t lib;
 	agc_module_load_func load_func;
 	agc_module_runtime_func runtime_func;
 	agc_module_shutdown_func shutdown_func;
@@ -17,8 +19,8 @@ struct agc_loadable_module {
 struct agc_loadable_module_container {
     char *cfgfile_path;
 	agc_hash_t *module_hash;
-	switch_mutex_t *mutex;
-	switch_memory_pool_t *pool;
+	agc_mutex_t *mutex;
+	agc_memory_pool_t *pool;
 };
 
 typedef struct agc_loadable_module agc_loadable_module_t;
@@ -27,12 +29,17 @@ static struct agc_loadable_module_container loadable_modules;
 
 static agc_status_t agc_loadable_module_loadfile(char *dir, char *fname, agc_bool_t global, const char **err);
 static agc_status_t agc_loadable_module_loadmodule(char *path, char *filename, agc_loadable_module_t **new_module, agc_bool_t global);
+static agc_status_t agc_loadable_module_processmodule(char *key, agc_loadable_module_t *new_module);
 
-AGC_DECLARE(agc_status_t) agc_loadable_module_init(agc_bool_t autoload)
+static void agc_loadable_module_runtime(void);
+static void * agc_loadable_module_exec(agc_thread_t *thread, void *obj);
+
+AGC_DECLARE(agc_status_t) agc_loadable_module_init()
 {
     FILE *file;
     yaml_parser_t parser;
     yaml_token_t token;
+    int module_count = 0;
     int done = 0;
     int error = 0;
     int iskey = 0;
@@ -112,7 +119,11 @@ AGC_DECLARE(agc_status_t) agc_loadable_module_init(agc_bool_t autoload)
                 if ((block == BLOCK_MODULES) && new_module) {
                     agc_bool_t global = AGC_FALSE;
                     global = agc_true(module_global);
-                    agc_loadable_module_loadfile(module_path, module_name, global, &err);
+                    if (agc_loadable_module_loadfile(module_path, module_name, global, &err) != AGC_STATUS_SUCCESS) {
+                        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Failed to load module %s, abort()\n", module_name);
+                        abort();
+                    }
+                    module_count++;
                     new_module = 0;
                 }
                 break;
@@ -126,6 +137,15 @@ AGC_DECLARE(agc_status_t) agc_loadable_module_init(agc_bool_t autoload)
     
     yaml_parser_delete(&parser);
     assert(!fclose(file));
+    
+    if (!count) {
+		agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "No modules loaded\n");
+        return AGC_STATUS_GENERR;
+	}
+    
+    agc_loadable_module_runtime();
+    
+    return AGC_STATUS_SUCCESS;
 }
 
 static agc_status_t agc_loadable_module_loadfile(char *dir, char *fname, agc_bool_t global, const char **err)
@@ -153,8 +173,26 @@ static agc_status_t agc_loadable_module_loadfile(char *dir, char *fname, agc_boo
     len += 8;
     
     path = (char *)agc_memory_alloc(loadable_modules.pool, len);
-    agc_snprintf(path, len, "%s%s%s%s", locate, AGC_PATH_SEPARATOR, file, ext); 
+    agc_snprintf(path, len, "%s%s%s%s", locate, AGC_PATH_SEPARATOR, file, ext);
     
+    if (agc_hash_get(loadable_modules.module_hash, file, AGC_HASH_KEY_STRING)) {
+        agc_log_printf(AGC_ID_LOG, AGC_LOG_WARNING, "Module %s Already Loaded!\n", file);
+        *err = "Module already loaded";
+        return AGC_STATUS_SUCCESS;
+    }
+    
+    
+    if ((status = agc_loadable_module_loadmodule(path, file, &new_module, global)) == AGC_STATUS_SUCCESS) {
+        if ((status = agc_loadable_module_processmodule(file, new_module)) == AGC_STATUS_SUCCESS) {
+            agc_log_printf(AGC_ID_LOG, AGC_LOG_INFO, "Module %s load sucess\n", file);
+        } else {
+            agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Module %s load failed\n", file);
+        }
+    } else {
+        *err = "module load failed";
+    }
+    
+    return status;
 }
 
 static agc_status_t agc_loadable_module_loadmodule(char *path, 
@@ -175,6 +213,7 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
     char *err = NULL;
     char *derr = NULL;
     int loading = 1;
+    int loading_times = 0;
     
     assert(path != NULL);
     agc_memory_create_pool(&module_pool);
@@ -182,73 +221,159 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
     *new_module = NULL;
     module_func_table_name = agc_core_sprintf(module_pool, "%s_module_interface", filename);
     
-    dso = agc_dso_open(NULL, load_global, &derr);
-    
-    if (!derr && dso) {
+    while (loading_times < 2) {
+        dso = agc_dso_open(path, load_global, &derr);
+        
+        if (derr || !dso) {
+            if (derr)
+                agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Loading module %s\n failed: %s\n", path, derr);
+            
+            if (dso)
+                agc_dso_destroy(&dso);
+            
+            agc_safe_free(derr);
+            continue;
+        }
+         
         module_func_table =  agc_dso_data_sym(dso, module_func_table_name, &derr);
+    
+        if (!module_func_table) {
+            if (derr)
+                agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Loading module %s no functable found.\n reason: %s\n", path, derr);
+            
+		    if (dso) 
+                agc_dso_destroy(&dso);
+            
+            agc_safe_free(derr);
+            continue;
+	    }
+        
+        break;
     }
-    
-    agc_safe_free(derr);
-    
-    if (!module_func_table) {
-		if (dso) agc_dso_destroy(&dso);
-		dso = agc_dso_open(path, load_global, &derr);
-	}
     
     while (loading) {
-        if (derr) {
-			err = derr;
-			break;
-		}
-        
         if (!module_func_table) {
-			module_func_table = agc_dso_data_sym(dso, module_func_table_name, &derr);
-		}
-        
-        if (derr) {
-			err = derr;
-			break;
-		}
-        
+            err = "no functable found";
+            break;
+        }
+    
         if (module_func_table && module_func_table->agc_api_version != AGC_API_VERSION) {
-			err = "Trying to load an old module.";
-			break;
-		}
-        
+            err = "load an old module";
+	        break;
+	    }
+    
         if (module_func_table) {
-			module_functions = module_func_table;
-			load_func_ptr = module_functions->load;
-		}
-        
-        if (load_func_ptr == NULL) {
-			err = "Not a valid module.";
-			break;
-		}
-        
-        status = load_func_ptr(&module_interface, pool);
+		    module_functions = module_func_table;
+		    load_func_ptr = module_functions->load;
+        }
+    
+        status = load_func_ptr(&module_interface, module_pool);
 
 	    if (status != AGC_STATUS_SUCCESS && status != AGC_STATUS_NOUNLOAD) {
-			err = "Module load returned an error";
-			module_interface = NULL;
-			break;
-		}
+            err = "load function returned an error";
+            break;
+	    }
 
-		if (!module_interface) {
-			err = "Module failed to initialize. Is this a valid module?";
-			break;
-		}
+	    if (!module_interface) {
+            err = "failed to initialize";
+            break;
+	    }
 
-		if ((module = agc_core_alloc(pool, sizeof(agc_loadable_module_t))) == 0) {
-			err = "Could not allocate memory\n";
-			abort();
-		}
+	    if ((module = agc_core_alloc(module_pool, sizeof(agc_loadable_module_t))) == 0) {
+		    abort();
+	    }
 
-		if (status == AGC_STATUS_NOUNLOAD) {
-			module->perm++;
-		}
-
-		loading = 0;
+	    if (status == AGC_STATUS_NOUNLOAD) {
+		    module->perm++;
+	    }
+        
+        loading = 0;
     }
     
-    //TODO
+    if (err) {
+        if (dso)
+            agc_dso_destroy(&dso);
+        
+        if (module_pool)
+            agc_memory_destroy_pool(module_pool);
+        
+        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Loading module %s\n failed: %s\n", path, err);
+        return AGC_STATUS_GENERR;
+    }
+    
+    module->pool = module_pool;
+    module->filename =  agc_core_strdup(module->pool, path);
+    module->module_interface = module_interface;
+    module->load_func = load_func_ptr;
+    
+    if (module_functions) {
+        module->runtime_func = module_functions->runtime;
+        module->shutdown_func = module_functions->shutdown;
+    }
+    
+    module->lib = dso;
+    *new_module = module;
+    agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "Successfully Loaded [%s]\n", module_interface->module_name);
+    
+    return AGC_STATUS_SUCCESS;
 }
+
+static agc_status_t agc_loadable_module_processmodule(char *key, agc_loadable_module_t *new_module)
+{
+    new_module->key = agc_core_strdup(new_module->pool, key);
+    agc_mutex_lock(loadable_modules.mutex);
+    
+    agc_hash_set(loadable_modules.module_hash, key, AGC_HASH_KEY_STRING, new_module);
+    
+    agc_mutex_unlock(loadable_modules.mutex);
+	return AGC_STATUS_SUCCESS;
+}
+
+static void * agc_loadable_module_exec(agc_thread_t *thread, void *obj)
+{
+    agc_status_t status = AGC_STATUS_SUCCESS;
+    
+    agc_core_thread_obj_t *thd_obj = obj;
+    
+    assert(thd_obj != NULL);
+    
+    agc_loadable_module_t *module = thd_obj->objs[0];
+    int restarts;
+    
+    assert(thread != NULL);
+	assert(module != NULL);
+    
+    for (restarts = 0; status != AGC_STATUS_TERM && !module->shutting_down; restarts++) {
+		status = module->runtime_func();
+	}
+    
+    agc_log_printf(AGC_ID_LOG, AGC_LOG_NOTICE, "Thread ended for %s\n", module->module_interface->module_name);
+    
+    if (thd_obj->pool) {
+		switch_memory_pool_t *pool = thd_obj->pool;
+		agc_log_printf(AGC_ID_LOG, AGC_LOG_DEBUG, "Destroying Pool for %s\n", module->module_interface->module_name);
+		agc_memory_destroy_pool(&pool);
+	}
+	agc_thread_exit(thread, 0);
+	return NULL;
+}
+
+static void agc_loadable_module_runtime(void)
+{
+    agc_hash_index_t *hi;
+    void *val;
+	agc_loadable_module_t *module;
+    
+    agc_mutex_lock(loadable_modules.mutex);
+    for (hi = agc_hash_first(loadable_modules.pool, loadable_modules.module_hash); hi; hi = agc_hash_next(hi)) {
+        val = agc_hash_this_val(hi);
+        module = (agc_loadable_module_t *) val;
+        
+        if (module->runtime_func) {
+			agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "Starting runtime thread for %s\n", module->module_interface->module_name);
+			module->thread = agc_core_launch_thread(agc_loadable_module_exec, module, module->pool);
+		}
+    }
+    agc_mutex_unlock(loadable_modules.mutex);
+}
+

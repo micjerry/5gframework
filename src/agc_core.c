@@ -112,11 +112,6 @@ AGC_DECLARE(void) agc_core_set_globals(void)
     
 }
 
-AGC_DECLARE(agc_status_t) agc_core_init_and_modload(agc_bool_t console, const char **err)
-{
-    
-}
-
 AGC_DECLARE(char *) agc_core_strdup(agc_memory_pool_t *pool, const char *todup)
 {
     char *duped = NULL;
@@ -135,4 +130,51 @@ AGC_DECLARE(char *) agc_core_strdup(agc_memory_pool_t *pool, const char *todup)
     duped = apr_pstrmemdup(pool, todup, len);
     assert(duped != NULL);
     return duped;
+}
+
+AGC_DECLARE(agc_status_t) agc_core_modload(const char **err)
+{
+    if (runtime.runlevel > 1) {
+		return AGC_STATUS_SUCCESS;
+	}
+    
+    runtime.runlevel++;
+    
+    if (agc_loadable_module_init() != AGC_STATUS_SUCCESS) {
+		*err = "Cannot load modules";
+		agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "Error: %s\n", *err);
+		return AGC_STATUS_GENERR;
+	}
+    
+    return AGC_STATUS_SUCCESS;
+    
+}
+
+AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void *obj, agc_memory_pool_t *pool)
+{
+    agc_thread_t *thread = NULL;
+    agc_threadattr_t *thd_attr = NULL;
+    agc_core_thread_obj_t *thd_obj = NULL;
+    
+    if (!pool) {
+        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "no pool\n");
+        return NULL;
+    }
+    
+    agc_threadattr_create(&thd_attr, pool);
+    if ((thd_obj = agc_core_alloc(pool, sizeof(*thd_obj))) == 0) {
+        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Could not allocate memory\n");
+        return NULL;
+    }
+    
+    thd_obj->pool = pool;
+    thd_obj->objs[0] = obj;
+    thd_obj->objs[1] = thread;
+    
+    agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
+    agc_threadattr_priority_set(thd_attr, AGC_PRI_REALTIME);
+    
+    agc_thread_create(&thread, thd_attr, func, thd_obj, pool);
+    
+    return thread;
 }

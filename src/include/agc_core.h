@@ -1,6 +1,8 @@
 #ifndef AGC_CORE_H
 #define AGC_CORE_H
 
+#define AGC_MAX_CORE_THREAD_OBJS 128
+
 // global directories
 struct agc_directories {
 	char *base_dir;
@@ -12,6 +14,19 @@ struct agc_directories {
 };
 
 typedef struct agc_directories agc_directories_t;
+
+struct agc_core_thread_obj {
+	/*! status of the thread */
+	int running;
+	/*! mutex */
+	agc_mutex_t *mutex;
+	/*! array of void pointers to pass mutiple data objects */
+	void *objs[AGC_MAX_CORE_THREAD_OBJS];
+	/*! a pointer to a memory pool if the thread has it's own pool */
+	agc_memory_pool_t *pool;
+};
+
+typedef struct agc_core_thread_obj agc_core_thread_obj_t;
 
 extern agc_directories_t AGC_GLOBAL_dirs;
 
@@ -29,8 +44,10 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err);
 
 AGC_DECLARE(void) agc_core_set_globals(void);
 
-AGC_DECLARE(agc_status_t) agc_core_init_and_modload(agc_bool_t console, const char **err);
-
 AGC_DECLARE(char *) agc_core_strdup(agc_memory_pool_t *pool, const char *todup);
-                                                  
+
+AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void *obj, agc_memory_pool_t *pool);
+
+AGC_DECLARE(agc_status_t) agc_core_modload(const char **err);
+                                             
 #endif
