@@ -1,11 +1,13 @@
 #include <agc.h>
 #include <yaml.h>
 
+#include "agc_dso.h"
+
 struct agc_loadable_module {
 	char *key;
 	char *filename;
 	int perm;
-    agc_loadable_module_interface *module_interface;
+    agc_loadable_module_interface_t *module_interface;
     agc_dso_lib_t lib;
 	agc_module_load_func load_func;
 	agc_module_runtime_func runtime_func;
@@ -120,7 +122,7 @@ AGC_DECLARE(agc_status_t) agc_loadable_module_init()
                     agc_bool_t global = AGC_FALSE;
                     global = agc_true(module_global);
                     if (agc_loadable_module_loadfile(module_path, module_name, global, &err) != AGC_STATUS_SUCCESS) {
-                        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Failed to load module %s, abort()\n", module_name);
+                        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Failed to load module %s, abort()\n", module_name);
                         abort();
                     }
                     module_count++;
@@ -138,8 +140,8 @@ AGC_DECLARE(agc_status_t) agc_loadable_module_init()
     yaml_parser_delete(&parser);
     assert(!fclose(file));
     
-    if (!count) {
-		agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "No modules loaded\n");
+    if (!module_count) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "No modules loaded\n");
         return AGC_STATUS_GENERR;
 	}
     
@@ -176,7 +178,7 @@ static agc_status_t agc_loadable_module_loadfile(char *dir, char *fname, agc_boo
     agc_snprintf(path, len, "%s%s%s%s", locate, AGC_PATH_SEPARATOR, file, ext);
     
     if (agc_hash_get(loadable_modules.module_hash, file, AGC_HASH_KEY_STRING)) {
-        agc_log_printf(AGC_ID_LOG, AGC_LOG_WARNING, "Module %s Already Loaded!\n", file);
+        agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Module %s Already Loaded!\n", file);
         *err = "Module already loaded";
         return AGC_STATUS_SUCCESS;
     }
@@ -184,9 +186,9 @@ static agc_status_t agc_loadable_module_loadfile(char *dir, char *fname, agc_boo
     
     if ((status = agc_loadable_module_loadmodule(path, file, &new_module, global)) == AGC_STATUS_SUCCESS) {
         if ((status = agc_loadable_module_processmodule(file, new_module)) == AGC_STATUS_SUCCESS) {
-            agc_log_printf(AGC_ID_LOG, AGC_LOG_INFO, "Module %s load sucess\n", file);
+            agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Module %s load sucess\n", file);
         } else {
-            agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Module %s load failed\n", file);
+            agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Module %s load failed\n", file);
         }
     } else {
         *err = "module load failed";
@@ -202,7 +204,7 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
 {
     agc_loadable_module_t *module = NULL;
 	agc_dso_lib_t dso = NULL;
-    apr_status_t status = AGC_STATUS_SUCCESS;
+    agc_status_t status = AGC_STATUS_SUCCESS;
     agc_loadable_module_function_table_t *module_func_table;
     agc_loadable_module_function_table_t *module_functions;
     agc_loadable_module_interface_t *module_interface = NULL;
@@ -226,7 +228,7 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
         
         if (derr || !dso) {
             if (derr)
-                agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Loading module %s\n failed: %s\n", path, derr);
+                agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Loading module %s\n failed: %s\n", path, derr);
             
             if (dso)
                 agc_dso_destroy(&dso);
@@ -239,7 +241,7 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
     
         if (!module_func_table) {
             if (derr)
-                agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Loading module %s no functable found.\n reason: %s\n", path, derr);
+                agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Loading module %s no functable found.\n reason: %s\n", path, derr);
             
 		    if (dso) 
                 agc_dso_destroy(&dso);
@@ -279,7 +281,7 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
             break;
 	    }
 
-	    if ((module = agc_core_alloc(module_pool, sizeof(agc_loadable_module_t))) == 0) {
+	    if ((module = agc_memory_alloc(module_pool, sizeof(agc_loadable_module_t))) == 0) {
 		    abort();
 	    }
 
@@ -295,9 +297,9 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
             agc_dso_destroy(&dso);
         
         if (module_pool)
-            agc_memory_destroy_pool(module_pool);
+            agc_memory_destroy_pool(&module_pool);
         
-        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Loading module %s\n failed: %s\n", path, err);
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Loading module %s\n failed: %s\n", path, err);
         return AGC_STATUS_GENERR;
     }
     
@@ -313,7 +315,7 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
     
     module->lib = dso;
     *new_module = module;
-    agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "Successfully Loaded [%s]\n", module_interface->module_name);
+    agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "Successfully Loaded [%s]\n", module_interface->module_name);
     
     return AGC_STATUS_SUCCESS;
 }
@@ -347,11 +349,11 @@ static void * agc_loadable_module_exec(agc_thread_t *thread, void *obj)
 		status = module->runtime_func();
 	}
     
-    agc_log_printf(AGC_ID_LOG, AGC_LOG_NOTICE, "Thread ended for %s\n", module->module_interface->module_name);
+    agc_log_printf(AGC_LOG, AGC_LOG_NOTICE, "Thread ended for %s\n", module->module_interface->module_name);
     
     if (thd_obj->pool) {
-		switch_memory_pool_t *pool = thd_obj->pool;
-		agc_log_printf(AGC_ID_LOG, AGC_LOG_DEBUG, "Destroying Pool for %s\n", module->module_interface->module_name);
+		agc_memory_pool_t *pool = thd_obj->pool;
+		agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Destroying Pool for %s\n", module->module_interface->module_name);
 		agc_memory_destroy_pool(&pool);
 	}
 	agc_thread_exit(thread, 0);
@@ -370,7 +372,7 @@ static void agc_loadable_module_runtime(void)
         module = (agc_loadable_module_t *) val;
         
         if (module->runtime_func) {
-			agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "Starting runtime thread for %s\n", module->module_interface->module_name);
+			agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "Starting runtime thread for %s\n", module->module_interface->module_name);
 			module->thread = agc_core_launch_thread(agc_loadable_module_exec, module, module->pool);
 		}
     }

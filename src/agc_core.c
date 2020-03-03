@@ -41,9 +41,6 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
         runtime.console = stdout;
     }
     
-    //parse_yaml_config
-    parse_config(err);
-    
 }
 
 AGC_DECLARE(void) agc_core_set_globals(void)
@@ -132,6 +129,27 @@ AGC_DECLARE(char *) agc_core_strdup(agc_memory_pool_t *pool, const char *todup)
     return duped;
 }
 
+AGC_DECLARE(char *) agc_core_vsprintf(agc_memory_pool_t *pool, const char *fmt, va_list ap)
+{
+    char *result = NULL;
+    assert(pool != NULL);
+    
+    result = apr_pvsprintf(pool, fmt, ap);
+	assert(result != NULL);
+    return result;
+}
+
+AGC_DECLARE(char *) agc_core_sprintf(agc_memory_pool_t *pool, const char *fmt, ...)
+{
+    va_list ap;
+	char *result;
+	va_start(ap, fmt);
+	result = agc_core_vsprintf(pool, fmt, ap);
+	va_end(ap);
+
+	return result;
+}
+
 AGC_DECLARE(agc_status_t) agc_core_modload(const char **err)
 {
     if (runtime.runlevel > 1) {
@@ -142,7 +160,7 @@ AGC_DECLARE(agc_status_t) agc_core_modload(const char **err)
     
     if (agc_loadable_module_init() != AGC_STATUS_SUCCESS) {
 		*err = "Cannot load modules";
-		agc_log_printf(AGC_ID_LOG, AGC_LOG_CONSOLE, "Error: %s\n", *err);
+		agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "Error: %s\n", *err);
 		return AGC_STATUS_GENERR;
 	}
     
@@ -157,13 +175,13 @@ AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void
     agc_core_thread_obj_t *thd_obj = NULL;
     
     if (!pool) {
-        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "no pool\n");
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "no pool\n");
         return NULL;
     }
     
     agc_threadattr_create(&thd_attr, pool);
-    if ((thd_obj = agc_core_alloc(pool, sizeof(*thd_obj))) == 0) {
-        agc_log_printf(AGC_ID_LOG, AGC_LOG_CRIT, "Could not allocate memory\n");
+    if ((thd_obj = agc_memory_alloc(pool, sizeof(*thd_obj))) == 0) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Could not allocate memory\n");
         return NULL;
     }
     

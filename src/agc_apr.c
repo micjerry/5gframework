@@ -1251,7 +1251,7 @@ AGC_DECLARE(void) agc_hash_set(agc_hash_t *ht, const void *key, agc_ssize_t klen
     return apr_hash_set(ht, key, klen, val);
 }
 
-AGC_DECLARE(void *) apr_hash_get(agc_hash_t *ht, const void *key, agc_ssize_t klen)
+AGC_DECLARE(void *) agc_hash_get(agc_hash_t *ht, const void *key, agc_ssize_t klen)
 {
     return apr_hash_get(ht, key, klen);
 }
