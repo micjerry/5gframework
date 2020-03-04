@@ -1,0 +1,3 @@
+profile:
+  maxfiles: 16
+  level: info

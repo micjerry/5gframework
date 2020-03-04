@@ -54,5 +54,6 @@ AGC_DECLARE(agc_status_t) agc_loadable_module_init();
 
 AGC_DECLARE(void) agc_loadable_module_shutdown(void);
 
+AGC_DECLARE(agc_loadable_module_interface_t *) agc_loadable_module_create_interface(agc_memory_pool_t *pool, const char *name);
 
 #endif

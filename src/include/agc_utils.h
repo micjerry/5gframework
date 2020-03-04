@@ -178,6 +178,11 @@ static inline int _zstr(const char *s)
 
 AGC_DECLARE(const char *) agc_cut_path(const char *in);
 AGC_DECLARE(agc_bool_t) agc_is_number(const char *str);
+AGC_DECLARE(unsigned int) agc_atoui(const char *nptr);
+AGC_DECLARE(unsigned int) agc_separate_string(char *buf, char delim, char **array, unsigned int arraylen);
+
+#define agc_arraylen(_a) (sizeof(_a) / sizeof(_a[0]))
+#define agc_split(_data, _delim, _array) agc_separate_string(_data, _delim, _array, agc_arraylen(_array))
 
 static inline int agc_true(const char *expr)
 {

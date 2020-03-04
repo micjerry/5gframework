@@ -379,3 +379,16 @@ static void agc_loadable_module_runtime(void)
     agc_mutex_unlock(loadable_modules.mutex);
 }
 
+AGC_DECLARE(agc_loadable_module_interface_t *) agc_loadable_module_create_interface(agc_memory_pool_t *pool, const char *name)
+{
+    agc_loadable_module_interface_t *interface;
+    
+    interface = agc_memory_alloc(pool, sizeof(agc_loadable_module_interface_t));
+    assert(interface != NULL);
+    
+    interface->pool = pool;
+    interface->module_name = agc_core_strdup(interface->pool, name);
+    agc_thread_rwlock_create(&interface->rwlock, interface->pool);
+    return interface;
+}
+
