@@ -3,6 +3,10 @@
 
 #define ESCAPE_META '\\'
 
+static char unescape_char(char escaped);
+static unsigned int separate_string_blank_delim(char *buf, char **array, unsigned int arraylen);
+static unsigned int separate_string_char_delim(char *buf, char delim, char **array, unsigned int arraylen);
+
 AGC_DECLARE(const char *) agc_cut_path(const char *in)
 {
     const char *p, *ret = in;
@@ -116,6 +120,29 @@ static char *cleanup_separated_string(char *str, char delim)
     }
 
     return start;
+}
+
+static char unescape_char(char escaped)
+{
+	char unescaped;
+
+	switch (escaped) {
+	case 'n':
+		unescaped = '\n';
+		break;
+	case 'r':
+		unescaped = '\r';
+		break;
+	case 't':
+		unescaped = '\t';
+		break;
+	case 's':
+		unescaped = ' ';
+		break;
+	default:
+		unescaped = escaped;
+	}
+	return unescaped;
 }
 
 static unsigned int separate_string_blank_delim(char *buf, char **array, unsigned int arraylen)

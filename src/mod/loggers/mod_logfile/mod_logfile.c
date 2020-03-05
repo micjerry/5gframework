@@ -1,4 +1,5 @@
 #include <agc.h>
+#include <yaml.h>
 
 AGC_MODULE_LOAD_FUNCTION(mod_logfile_load);
 AGC_MODULE_SHUTDOWN_FUNCTION(mod_logfile_shutdown);
@@ -91,7 +92,7 @@ static agc_status_t load_config()
     profile->log_session = AGC_TRUE;
     profile->level = AGC_LOG_UNINIT;
           
-    file = fopen(profile->file, "rb");
+    file = fopen(profile->cfgfile, "rb");
     assert(file);
     assert(yaml_parser_initialize(&parser));
     

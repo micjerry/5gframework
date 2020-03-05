@@ -46,6 +46,15 @@ AC_SUBST(OSDIR)
 #######################################
 ####     Checks for arguments.     ####
 #######################################
+AC_PREFIX_DEFAULT(/opt/agc)
+
+if test "x$prefix" = "xNONE" ; then
+    prefix='/opt/agc'
+fi
+
+if test "$includedir" = "\${prefix}/include" ; then
+   includedir="${prefix}/include/agc"
+fi
 
 rundir="${prefix}/run"
 logdir="${prefix}/log"
@@ -54,8 +63,13 @@ confdir="${prefix}/conf"
 default_runtimedir="$rundir"
 default_logfiledir="$logdir"
 default_certsdir="${prefix}/certs"
-default_moddir="${prefix}/mod"
 
+default_modulesdir="${prefix}/mod"
+
+
+if test "x${exec_prefix}" = "xNONE" ; then
+    exec_prefix="$prefix"
+fi
 
 AC_ARG_WITH([rundir],
     [AS_HELP_STRING([--with-rundir=DIR], [Put pidfile into this location (default: $prefix/run)])], [runtimedir="$withval"], [runtimedir="${default_runtimedir}"])
@@ -78,7 +92,6 @@ eval modulesdir="${modulesdir}"
 AC_SUBST(modulesdir)
 AC_DEFINE_UNQUOTED([AGC_MOD_DIR],"${modulesdir}",[where to install the modules to])
 
-
 AC_SUBST(confdir)
 AC_DEFINE_UNQUOTED([AGC_CONF_DIR],"${confdir}",[directory for configuration files])
 
@@ -96,6 +109,12 @@ AC_PROG_MKDIR_P
 AC_PROG_CC
 AC_PROG_INSTALL
 AM_PROG_AR
+
+m4_defun([_LT_AC_LANG_F77_CONFIG], [:])
+m4_defun([_LT_AC_LANG_GCJ_CONFIG], [:])
+m4_defun([_LT_AC_LANG_RC_CONFIG], [:])
+AM_PROG_CC_C_O
+AC_PROG_LIBTOOL
 
 LT_INIT([pic-only disable-static])
 
@@ -150,6 +169,64 @@ AGC_AM_CXXFLAGS="-I${agc_srcdir}/src/include -I${agc_builddir}/src/include"
 AGC_AM_CPPFLAGS="-I${agc_srcdir}/src/include -I${agc_builddir}/src/include"
 AGC_AM_LDFLAGS="-lm"
 
+##
+# detect libtool major version,
+# set libtool library extension based on this
+# to work around some brokeness when using 'la' with libtool-1.5
+#
+AC_MSG_CHECKING([libtool major version])
+libtool="${agc_builddir}/libtool"
+LIBTOOL_MAJOR_VERSION="`$libtool --version 2>/dev/null| sed -e 's/([[^)]]*)//g;s/^[[^0-9]]*//;s/[[- ]].*//g;q'| awk  'BEGIN { FS = "." } { print $1 }' `"
+if test -z "$LIBTOOL_MAJOR_VERSION" ; then
+	LIBTOOL_MAJOR_VERSION="`sed -n -e '/^VERSION/{s/^.*=\"\{0,1\}\([[0-9]]\{1,\}\)\..*/\1/;p;}' ${agc_srcdir}/build/ltmain.sh`"
+fi
+if test -z "$LIBTOOL_MAJOR_VERSION" ; then
+	AC_MSG_ERROR([Failed to detect your libtool version])
+fi
+AC_MSG_RESULT([${LIBTOOL_MAJOR_VERSION}])
+
+LIBTOOL_LIB_EXTEN=so
+
+if test "${LIBTOOL_MAJOR_VERSION}" = "2" ; then
+   LIBTOOL_LIB_EXTEN="la"
+fi
+AC_MSG_RESULT([using libtool library extension... ${LIBTOOL_LIB_EXTEN}])
+
+# Enable debugging (default: on)
+AC_ARG_ENABLE(debug,
+[AC_HELP_STRING([--disable-debug],[build without debug information])],[enable_debug="$enableval"],[enable_debug="yes"])
+
+if test "${enable_debug}" = "yes"; then
+        AC_DEFINE([DEBUG],[],[Enable extra debugging.])
+	saved_CFLAGS="$CFLAGS"
+	CFLAGS=
+        AX_CFLAGS_WARN_ALL_ANSI
+	AGC_ANSI_CFLAGS=$CFLAGS
+	CFLAGS="$saved_CFLAGS"	
+
+	if test "x${ax_cv_c_compiler_vendor}" = "xgnu" ; then
+	    if test "$ac_cv_gcc_supports_w_no_unused_result" = yes; then
+	      APR_ADDTO(AGC_AM_CFLAGS, -Wno-unused-result)
+	    fi
+	    APR_ADDTO(AGC_AM_CFLAGS, -g -ggdb)
+	    export DEBUG_CFLAGS="-g -ggdb"
+	fi
+
+fi
+
+saved_CFLAGS="$CFLAGS"
+
+AC_CACHE_CHECK([whether compiler supports -Wdeclaration-after-statement], [ac_cv_gcc_declaration_after_statement], [
+CFLAGS="$CFLAGS -Wdeclaration-after-statement"
+AC_TRY_COMPILE([],[return 0;],[ac_cv_gcc_declaration_after_statement=yes],[ac_cv_gcc_declaration_after_statement=no])
+])
+AC_MSG_RESULT($ac_cv_gcc_declaration_after_statement)
+
+if test x"$ac_cv_gcc_declaration_after_statement" = xyes; then
+    APR_ADDTO(AGC_ANSI_CFLAGS, -Wdeclaration-after-statement)
+fi
+CFLAGS="$saved_CFLAGS"
+
 AC_SUBST(AGC_AM_CFLAGS)
 AC_SUBST(AGC_ANSI_CFLAGS)
 AC_SUBST(AGC_AM_CXXFLAGS)
@@ -198,14 +275,6 @@ PKG_CHECK_MODULES([YAML], yaml-0.1 >= 0.1.4)
 AC_SUBST(YAML_CFLAGS)
 AC_SUBST(YAML_LIBS)
 
-if test "x$prefix" = "xNONE" ; then
-    prefix='/opt/agc'
-fi
-
-if test "$includedir" = "\${prefix}/include" ; then
-   includedir="${prefix}/include/agc"
-fi
-
 AC_SUBST(includedir)
 
 AC_CHECK_LIB(apr-1, apr_pool_mutex_set, use_system_apr=yes, use_system_apr=no)
@@ -247,6 +316,10 @@ AC_SUBST(OUR_DISABLED_CLEAN_MODS)
 AC_SUBST(OUR_DISABLED_INSTALL_MODS)
 AC_SUBST(OUR_DISABLED_UNINSTALL_MODS)
 AC_SUBST(AM_MAKEFLAGS)
+AC_SUBST(LIBTOOL_LIB_EXTEN)
+
+LIBTOOL='$(SHELL) $(agc_builddir)/libtool'
+AC_SUBST(LIBTOOL)
 
 #####################
 #### Conclusion. ####
@@ -266,9 +339,10 @@ AC_CONFIG_FILES([src/include/agc_version.h])
 AC_CONFIG_FILES([src/include/agc_am_config.h])
 AC_CONFIG_FILES([Makefile
         build/Makefile
+        build/modmake.rules
         src/Makefile
         src/mod/Makefile
-        src/mod/loggers/mod_log/Makefile])
+        src/mod/loggers/mod_logfile/Makefile])
 AC_OUTPUT
 
 echo 
