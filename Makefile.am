@@ -7,6 +7,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 all-recursive: libagc.la
 clean-recusive: clean_core
+install-recursive: install-libLTLIBRARIES install-binPROGRAMS
 
 if SYSTEM_APR
 AM_LIBAPR_CFLAGS := $(shell apr-1-config --cflags)

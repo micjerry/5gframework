@@ -41,6 +41,7 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
         runtime.console = stdout;
     }
     
+    return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(void) agc_core_set_globals(void)
