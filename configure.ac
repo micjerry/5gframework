@@ -20,7 +20,7 @@ LIBVERSION=1:0:0
 dnl Must come before AM_INIT_AUTOMAKE.
 AC_CONFIG_AUX_DIR([build])
 AC_CONFIG_TESTDIR(test)
-AM_INIT_AUTOMAKE([1.10 -Wall -Werror foreign subdir-objects])
+AM_INIT_AUTOMAKE
 
 AC_CONFIG_HEADERS([config.h:config.in])
 AC_CONFIG_SRCDIR([src/agc.c])
@@ -58,6 +58,7 @@ fi
 
 rundir="${prefix}/run"
 logdir="${prefix}/log"
+libdir="${prefix}/lib"
 
 eval full_datadir="${datadir}/agc"
 eval datadir=$full_datadir
@@ -68,8 +69,7 @@ default_runtimedir="$rundir"
 default_logfiledir="$logdir"
 default_certsdir="${prefix}/certs"
 
-default_modulesdir="${prefix}/mod"
-
+default_modulesdir="${libdir}/agc/mod"
 
 if test "x${exec_prefix}" = "xNONE" ; then
     exec_prefix="$prefix"

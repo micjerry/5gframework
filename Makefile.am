@@ -147,6 +147,13 @@ modules: libagc.la $(agc_builddir)/modules.conf src/mod/modules.inc
 install_mod: libagc.la $(agc_builddir)/modules.conf src/mod/modules.inc
 	@cd src/mod && $(MAKE) $(AM_MAKEFLAGS) install
 
+mod_install: install_mod
+
+uninstall_mod: $(agc_builddir)/modules.conf src/mod/modules.inc
+	@cd src/mod && $(MAKE) $(AM_MAKEFLAGS) uninstall
+
+mod_uninstall: uninstall_mod
+
 config-%:
 	test -d $(DESTDIR)$(confdir) || $(mkinstalldirs) $(DESTDIR)$(confdir)
 	for conffile in `cd $(agc_srcdir)/conf/$* && find . -name \*.yml && find . -name \*.conf` ; do \
@@ -161,6 +168,9 @@ config-%:
 samples-conf: config-default
 
 samples: samples-conf
+
+install-exec-local:
+	$(mkinstalldirs) $(DESTDIR)$(modulesdir)
 
 install-data-local:
 	@echo Installing $(NAME)
