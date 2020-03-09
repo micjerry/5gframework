@@ -2,10 +2,10 @@
 #define AGC_AM_CONFIG_H
 
 #define AGC_PREFIX_DIR "@prefix@"
-#define AGC_RUN_DIR "@AGC_RUN_DIR@"
-#define AGC_LOG_DIR "@AGC_LOG_DIR@"
-#define AGC_CERTS_DIR "@AGC_CERTS_DIR@"
-#define AGC_MOD_DIR "@AGC_MOD_DIR@"
-#define AGC_CONF_DIR "@AGC_CONF_DIR@"
+#define AGC_RUN_DIR "@runtimedir@"
+#define AGC_LOG_DIR "@logfiledir@"
+#define AGC_CERTS_DIR "@certsdir@"
+#define AGC_MOD_DIR "@modulesdir@"
+#define AGC_CONF_DIR "@confdir@"
 
 #endif
