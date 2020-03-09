@@ -4,6 +4,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = . src build
 AUTOMAKE_OPTIONS = foreign subdir-objects
+NAME = agc
 
 all-recursive: libagc.la
 clean-recusive: clean_core
@@ -146,6 +147,27 @@ modules: libagc.la $(agc_builddir)/modules.conf src/mod/modules.inc
 install_mod: libagc.la $(agc_builddir)/modules.conf src/mod/modules.inc
 	@cd src/mod && $(MAKE) $(AM_MAKEFLAGS) install
 
+config-%:
+	test -d $(DESTDIR)$(confdir) || $(mkinstalldirs) $(DESTDIR)$(confdir)
+	for conffile in `cd $(agc_srcdir)/conf/$* && find . -name \*.yml && find . -name \*.conf` ; do \
+		dir=`echo $$conffile | sed -e 's|^\.||' | sed -e 's|/[^/]*$$||'`; \
+		filename=`echo $$conffile | sed -e 's|^\.||' | sed -e 's|^.*/||'`; \
+		test -d $(DESTDIR)$(confdir)$$dir || $(mkinstalldirs) $(DESTDIR)$(confdir)$$dir ; \
+		test -f $(DESTDIR)$(confdir)$$dir/$$filename || \
+		test -f $(DESTDIR)$(confdir)$$dir/$$filename.noload || \
+			$(INSTALL) -m 644 $(agc_srcdir)/conf/$*/$$dir/$$filename $(DESTDIR)$(confdir)$$dir; \
+	done
+
+samples-conf: config-default
+
+samples: samples-conf
+
+install-data-local:
+	@echo Installing $(NAME)
+	@for x in $(modulesdir) $(runtimedir) $(logfiledir); do \
+		$(mkinstalldirs) $(DESTDIR)$$x ; \
+	 done
+	test -d $(DESTDIR)$(confdir) || $(MAKE) samples-conf
 
 ##
 ## Helper targets

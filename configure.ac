@@ -58,7 +58,11 @@ fi
 
 rundir="${prefix}/run"
 logdir="${prefix}/log"
-confdir="${prefix}/conf"
+
+eval full_datadir="${datadir}/agc"
+eval datadir=$full_datadir
+
+eval confdir="${sysconfdir}/agc"
 
 default_runtimedir="$rundir"
 default_logfiledir="$logdir"
@@ -94,6 +98,9 @@ AC_DEFINE_UNQUOTED([AGC_MOD_DIR],"${modulesdir}",[where to install the modules t
 
 AC_SUBST(confdir)
 AC_DEFINE_UNQUOTED([AGC_CONF_DIR],"${confdir}",[directory for configuration files])
+
+AC_SUBST(datadir)
+AC_DEFINE_UNQUOTED([AGC_DATA_DIR],"${datadir}",[directory for data files])
 
 AC_DEFINE_UNQUOTED([AGC_PREFIX_DIR],"${prefix}",[directory for base])
 
