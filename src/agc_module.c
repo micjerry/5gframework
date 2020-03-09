@@ -57,6 +57,7 @@ AGC_DECLARE(agc_status_t) agc_loadable_module_init()
     memset(&loadable_modules, 0, sizeof(loadable_modules));
     agc_memory_create_pool(&loadable_modules.pool);
     
+    agc_mutex_init(&loadable_modules.mutex, AGC_MUTEX_NESTED, loadable_modules.pool);
     loadable_modules.module_hash = agc_hash_make(loadable_modules.pool);
     
     loadable_modules.cfgfile_path = agc_core_sprintf(loadable_modules.pool, "%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, CFG_MODULES_FILE);

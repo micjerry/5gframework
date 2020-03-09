@@ -41,6 +41,8 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
         runtime.console = stdout;
     }
     
+    agc_log_init(runtime.memory_pool, AGC_FALSE);
+    
     return AGC_STATUS_SUCCESS;
 }
 
@@ -106,7 +108,7 @@ AGC_DECLARE(void) agc_core_set_globals(void)
             agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s%scerts", base_dir, AGC_PATH_SEPARATOR);
 #endif
         }
-    }      
+    }
     
 }
 

@@ -55,8 +55,10 @@ AGC_MODULE_LOAD_FUNCTION(mod_logfile_load)
     
     agc_mutex_init(&globals.mutex, AGC_MUTEX_NESTED, module_pool);
     *module_interface = agc_loadable_module_create_interface(module_pool, modname);
-    if (load_config() != AGC_STATUS_SUCCESS)
+    if (load_config() != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Loading logger config failed\n");
         return AGC_STATUS_GENERR;
+    }
     
     agc_log_bind_logger(mod_logfile_logger, AGC_LOG_DEBUG, AGC_FALSE);
     return AGC_STATUS_SUCCESS;
@@ -172,10 +174,11 @@ static agc_status_t load_config()
     if (zstr(profile->logfile)) {
         char logfile[512];
         agc_snprintf(logfile, sizeof(logfile), "%s%s%s", AGC_GLOBAL_dirs.log_dir, AGC_PATH_SEPARATOR, "agc.log");
-        profile->logfile = agc_core_strdup(module_pool, token.data.scalar.value);
+        profile->logfile = agc_core_strdup(module_pool, logfile);
     }
     
     if (mod_logfile_openlogfile(AGC_TRUE) != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Create logger file failed\n");
         return AGC_STATUS_GENERR;
     }
     
@@ -257,6 +260,7 @@ static agc_status_t mod_logfile_openlogfile(agc_bool_t check)
     
     stat = agc_file_open(&afd, profile->logfile, flags, AGC_FPROT_OS_DEFAULT, module_pool);
     if (stat != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Open logger file failed\n");
         return AGC_STATUS_FALSE;
     }
     
