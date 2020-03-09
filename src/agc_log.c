@@ -153,7 +153,7 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
     FILE *console;
     const char *funcp = (func ? func : "");
     const char *filep = (file ? agc_cut_path(file) : "");
-    const char *extra_fmt = "%s [%s] %s:%d%c%s";
+    const char *extra_fmt = "%s [%s] %s:%d %s";
     char *full_fmt = NULL;
     
     char date[80] = "";
@@ -181,7 +181,7 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
     full_fmt = malloc(len + 1);
     agc_assert(full_fmt);
     
-    agc_snprintf(full_fmt, len, extra_fmt, date, agc_log_level2str(level), filep, line, 128, fmt);
+    agc_snprintf(full_fmt, len, extra_fmt, date, agc_log_level2str(level), filep, line, fmt);
     
     ret = agc_vasprintf(&data, full_fmt, ap);
     if (ret == -1) {

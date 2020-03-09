@@ -187,9 +187,9 @@ static agc_status_t agc_loadable_module_loadfile(char *dir, char *fname, agc_boo
     
     if ((status = agc_loadable_module_loadmodule(path, file, &new_module, global)) == AGC_STATUS_SUCCESS) {
         if ((status = agc_loadable_module_processmodule(file, new_module)) == AGC_STATUS_SUCCESS) {
-            agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Module %s load sucess\n", file);
+            agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Module %s load success.\n", file);
         } else {
-            agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Module %s load failed\n", file);
+            agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Module %s load failed.\n", file);
         }
     } else {
         *err = "module load failed";
@@ -316,7 +316,7 @@ static agc_status_t agc_loadable_module_loadmodule(char *path,
     
     module->lib = dso;
     *new_module = module;
-    agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "Successfully Loaded [%s]\n", module_interface->module_name);
+    agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "Successfully Loaded [%s].\n", module_interface->module_name);
     
     return AGC_STATUS_SUCCESS;
 }

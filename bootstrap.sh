@@ -200,7 +200,7 @@ bootstrap_apr() {
     $libtoolize --force --copy
   fi
   
-    if [ -f libtool.m4 ]; then 
+  if [ -f libtool.m4 ]; then 
     ltfile=`pwd`/libtool.m4
   else
     if [ $lt_major -eq 2 ]; then
@@ -226,6 +226,8 @@ bootstrap_apr() {
   echo "bootstrap: Using libtool.m4 at ${ltfile}."
 
   cat $ltfile | sed -e 's/LIBTOOL=\(.*\)top_build/LIBTOOL=\1apr_build/' > build/libtool.m4
+  
+  sed -i 's/$RM "$cfgfile"/$RM -f "$cfgfile"/' build/libtool.m4
 
   # libtool.m4 from 1.6 requires ltsugar.m4
   if [ -f ltsugar.m4 ]; then
