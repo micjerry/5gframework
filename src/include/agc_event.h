@@ -3,6 +3,9 @@
 
 #include <agc.h>
 
+#define EVENT_NULL_SOURCEID 0
+#define EVENT_ID_LIMIT 1024
+
 struct agc_event_header {
 	/*! the header name */
 	char *name;
@@ -16,13 +19,24 @@ struct agc_event_header {
 struct agc_event {
 	/*! the event id (descriptor) */
 	int event_id;
+    
     /*! the name of the event */
     char *event_name;
+    
+    /*! the source of event, the same soure will be handled by same thread */
+    int source_id;
+    
 	/*! the event headers */
 	agc_event_header *headers; 
     
+    agc_event_header *last_header;
+    
+    /*! the context of event */
+    void *context;
+    
 	/*! the body of the event */
 	char *body;
+    
 	/*! unique key */
 	unsigned long key;
 	struct agc_event *next;
@@ -40,13 +54,13 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool);
 
 AGC_DECLARE(agc_status_t) agc_event_shutdown(void);
 
-AGC_DECLARE(void) agc_event_register(int event_id, const char *event_name);
+AGC_DECLARE(int) agc_event_alloc_source(const char *source_name);
 
-AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id);
+AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_name);
+
+AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, int source_id);
 
 AGC_DECLARE(void) agc_event_destroy(agc_event_t **event);
-
-AGC_DECLARE(agc_status_t) agc_event_set_name(agc_event_t *event, const char *event_name);
 
 AGC_DECLARE(agc_status_t) agc_event_add_header(agc_event_t *event, const char *header_name, const char *fmt, ...) PRINTF_FUNCTION(3, 4);
 
@@ -71,7 +85,8 @@ AGC_DECLARE(agc_status_t) agc_event_bind(const char *id, int event_id, const cha
 
 AGC_DECLARE(agc_status_t) agc_event_bind_removable(const char *id, int event_id, const char *event_name,
 															agc_event_callback_t callback, void *user_data, agc_event_node_t **node);
-                                                            
+
+AGC_DECLARE(agc_status_t) agc_event_fire(agc_event_t **event);
 
 AGC_DECLARE(agc_status_t) agc_event_unbind(agc_event_node_t **node);
 
