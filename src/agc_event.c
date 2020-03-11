@@ -196,16 +196,68 @@ AGC_DECLARE(agc_status_t) agc_event_add_header(agc_event_t *event, const char *h
     return agc_event_base_add_header(event, header_name, data);
 }
 
+AGC_DECLARE(agc_status_t) agc_event_add_header_string(agc_event_t *event, const char *header_name, const char *data)
+{
+    if (data) {
+		return agc_event_base_add_header(event, header_name, strdup(data));
+	}
+    
+	return AGC_STATUS_GENERR;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_del_header(agc_event_t *event, const char *header_name)
+{
+    agc_event_header_t *hp, *lp = NULL, *tp;
+    
+    tp = event->headers;
+    
+    while (tp) {
+        hp = tp;
+		tp = tp->next;
+        
+        if (!strcasecmp(header_name, hp->name)) {
+            if (lp) {
+				lp->next = hp->next;
+			} else {
+				event->headers = hp->next;
+			}
+            
+            if (hp == event->last_header || !hp->next) {
+				event->last_header = lp;
+			}
+            
+            agc_safe_free(hp->name);
+            agc_safe_free(hp->value);
+            agc_safe_free(hp);
+        } else {
+            lp = hp;
+        }
+    }
+    
+    return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_event_header_t *) agc_event_get_header(agc_event_t *event, const char *header_name)
+{
+    agc_event_header_t *hp;
+    if ((hp = agc_event_get_header_ptr(event, header_name))) {
+        return hp->value;
+    }
+    
+    return NULL;
+}
+
 static void agc_event_launch_dispatch_threads()
 {
     agc_threadattr_t *thd_attr;
     int index = 0;
-    uint32_t wait_times = 200;
+    uint32_t wait_times = 0;
     
     EVENT_DISPATCH_THREADS = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(agc_thread_t *));
     
     for (index = 0; index < MAX_DISPATCHER; i++)
     {
+        wait_times = 200;
         agc_threadattr_create(&thd_attr, RUNTIME_POOL);
         agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
 		agc_threadattr_priority_set(thd_attr, AGC_PRI_REALTIME);
