@@ -16,6 +16,9 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
     runtime.cpu_count = sysconf (_SC_NPROCESSORS_ONLN);
     runtime.hard_log_level = AGC_LOG_DEBUG;
     
+    //initial random
+    srand(time(NULL));
+    
     if (apr_initialize() != AGC_STATUS_SUCCESS) {
 		*err = "FATAL ERROR! Could not initialize APR\n";
 		return AGC_STATUS_MEMERR;
@@ -151,6 +154,16 @@ AGC_DECLARE(char *) agc_core_sprintf(agc_memory_pool_t *pool, const char *fmt, .
 	va_end(ap);
 
 	return result;
+}
+
+AGC_DECLARE(uint32_t) agc_core_cpu_count(void)
+{
+    return runtime.cpu_count;
+}
+
+AGC_DECLARE(void) agc_os_yield(void)
+{
+    sched_yield(); 
 }
 
 AGC_DECLARE(agc_status_t) agc_core_modload(const char **err)

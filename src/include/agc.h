@@ -29,6 +29,8 @@
 #include "agc_core.h"
 #include "agc_memory.h"
 #include "agc_module.h"
+#include "agc_mprintf.h"
+#include "agc_json.h"
 #include "agc_event.h"
 
 #endif

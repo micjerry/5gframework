@@ -11,25 +11,23 @@ struct agc_event_header {
 	char *name;
 	/*! the header value */
 	char *value;
-	/*! hash of the header name */
-	unsigned long hash;
+
 	struct agc_event_header *next;
 };
+
+typedef struct agc_event_header agc_event_header_t;
 
 struct agc_event {
 	/*! the event id (descriptor) */
 	int event_id;
-    
-    /*! the name of the event */
-    char *event_name;
-    
+        
     /*! the source of event, the same soure will be handled by same thread */
     int source_id;
     
 	/*! the event headers */
-	agc_event_header *headers; 
+	agc_event_header_t *headers; 
     
-    agc_event_header *last_header;
+    agc_event_header_t *last_header;
     
     /*! the context of event */
     void *context;
@@ -37,8 +35,6 @@ struct agc_event {
 	/*! the body of the event */
 	char *body;
     
-	/*! unique key */
-	unsigned long key;
 	struct agc_event *next;
 };
 
@@ -78,22 +74,19 @@ AGC_DECLARE(char *) agc_event_get_body(agc_event_t *event);
 
 AGC_DECLARE(agc_status_t) agc_event_dup(agc_event_t **event, agc_event_t *todup);
 
-AGC_DECLARE(void) agc_event_merge(agc_event_t *event, agc_event_t *tomerge);
-
 //dispatch event
-AGC_DECLARE(agc_status_t) agc_event_bind(const char *id, int event_id, const char *event_name, agc_event_callback_t callback, void *user_data);
+AGC_DECLARE(agc_status_t) agc_event_bind(const char *id, int event_id, agc_event_callback_func callback, void *user_data);
 
-AGC_DECLARE(agc_status_t) agc_event_bind_removable(const char *id, int event_id, const char *event_name,
-															agc_event_callback_t callback, void *user_data, agc_event_node_t **node);
+AGC_DECLARE(agc_status_t) agc_event_bind_removable(const char *id, int event_id, agc_event_callback_func callback, void *user_data, agc_event_node_t **node);
 
 AGC_DECLARE(agc_status_t) agc_event_fire(agc_event_t **event);
 
 AGC_DECLARE(agc_status_t) agc_event_unbind(agc_event_node_t **node);
 
-AGC_DECLARE(agc_status_t) agc_event_unbind_callback(agc_event_callback_t callback);
+AGC_DECLARE(agc_status_t) agc_event_unbind_callback(agc_event_callback_func callback);
+
+AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON **json);
 
 AGC_DECLARE(agc_status_t) agc_event_serialize_json(agc_event_t *event, char **str);
-
-AGC_DECLARE(agc_status_t) agc_event_create_json(agc_event_t **event, const char *json);
 
 #endif

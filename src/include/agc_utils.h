@@ -51,6 +51,11 @@ static inline uint64_t agc_tolower64(uint64_t eax)
 	return eax + ebx;
 }
 
+static inline int agc_random(int max)
+{
+    return rand() % max;
+}
+
 static inline void agc_toupper_max(char *s)
 {
 	uint64_t *b,*p;

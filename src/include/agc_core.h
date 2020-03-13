@@ -50,6 +50,10 @@ AGC_DECLARE(char *) agc_core_vsprintf(agc_memory_pool_t *pool, const char *fmt, 
 
 AGC_DECLARE(char *) agc_core_sprintf(agc_memory_pool_t *pool, const char *fmt, ...);
 
+AGC_DECLARE(uint32_t) agc_core_cpu_count(void);
+
+AGC_DECLARE(void) agc_os_yield(void);
+
 AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void *obj, agc_memory_pool_t *pool);
 
 AGC_DECLARE(agc_status_t) agc_core_modload(const char **err);
