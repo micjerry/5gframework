@@ -53,6 +53,8 @@ typedef struct apr_thread_mutex_t agc_mutex_t;
 typedef int64_t agc_time_t;
 typedef int64_t agc_interval_time_t;
 
+typedef intptr_t agc_int_t;
+
 /** Opaque type used for the atomic operations */
 #ifdef apr_atomic_t
     typedef apr_atomic_t agc_atomic_t;

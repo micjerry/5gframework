@@ -35,6 +35,11 @@ struct agc_event {
 	/*! the body of the event */
 	char *body;
     
+    /* timer event */
+    char timer_set;
+    
+    agc_rbtree_node_t  timer;
+    
 	struct agc_event *next;
 };
 

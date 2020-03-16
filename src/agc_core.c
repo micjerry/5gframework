@@ -212,3 +212,8 @@ AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void
     
     return thread;
 }
+
+AGC_DECLARE(void) agc_cond_next(void)
+{
+    apr_sleep(1000);
+}

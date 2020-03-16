@@ -77,6 +77,8 @@ library_include_HEADERS = \
 	src/include/agc_dso.h \
 	src/include/agc_mprintf.h \
 	src/include/agc_json.h \
+	src/include/agc_rbtree.h \
+	src/include/agc_timer.h \
 	src/include/agc_event.h \
 	src/include/private/agc_core_pvt.h
  
@@ -90,7 +92,8 @@ libagc_la_SOURCES = \
 	src/agc_core.c \
 	src/agc_core_memory.c \
 	src/agc_log.c \
-	src/agc_time.c \
+	src/agc_rbtree.c \
+	src/agc_timer.c \
 	src/agc_utils.c \
 	src/agc_module.c \
 	src/agc_dso.c \

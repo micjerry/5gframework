@@ -63,7 +63,7 @@ agc_rbtree_insert(agc_rbtree_t *tree, agc_rbtree_node_t *node)
             } else {
                 if (node == node->parent->left) {
                     node = node->parent;
-                    abc_rbtree_right_rotate(root, sentinel, node);
+                    agc_rbtree_right_rotate(root, sentinel, node);
                 }
 
                 agc_rbt_black(node->parent);

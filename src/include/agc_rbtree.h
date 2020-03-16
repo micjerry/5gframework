@@ -5,8 +5,8 @@
 nginx rbtree
 */
 
-typedef uint32_t  agc_rbtree_key_t;
-typedef int   agc_rbtree_key_int_t;
+typedef uintptr_t agc_rbtree_key_t;
+typedef intptr_t  agc_rbtree_key_int_t;
 
 typedef struct agc_rbtree_node_s  agc_rbtree_node_t;
 
