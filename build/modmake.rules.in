@@ -172,7 +172,8 @@ $(MODNAME).o: $(MODDIR)/$(SOURCEFILE) \
   $(agc_srcdir)/src/include/agc_log.h $(agc_srcdir)/src/include/agc_platform.h \
   $(agc_srcdir)/src/include/agc_utils.h $(agc_srcdir)/src/include/agc_memory.h \
   $(agc_srcdir)/src/include/agc_module.h $(agc_srcdir)/src/include/agc_mprintf.h \
-  $(agc_srcdir)/src/include/agc_json.h $(agc_srcdir)/src/include/agc_event.h
+  $(agc_srcdir)/src/include/agc_json.h $(agc_srcdir)/src/include/agc_rbtree.h \
+  $(agc_srcdir)/src/include/agc_timer.h
 	@echo Compiling $<...
 	if test -f "$(CSOURCEFILE)" -o -f "$(MODDIR)/$(CSOURCEFILE)"; then \
 		if test ! -z $(VERBOSE) ; then echo $(COMPILE) -c -o $@ `test -f '$<' || echo '$(MODDIR)/'`$< ; fi ;\
@@ -189,7 +190,8 @@ $(MODNAME).lo: $(MODDIR)/$(SOURCEFILE) \
   $(agc_srcdir)/src/include/agc_log.h $(agc_srcdir)/src/include/agc_platform.h \
   $(agc_srcdir)/src/include/agc_utils.h $(agc_srcdir)/src/include/agc_memory.h \
   $(agc_srcdir)/src/include/agc_module.h $(agc_srcdir)/src/include/agc_mprintf.h \
-  $(agc_srcdir)/src/include/agc_json.h $(agc_srcdir)/src/include/agc_event.h 
+  $(agc_srcdir)/src/include/agc_json.h $(agc_srcdir)/src/include/agc_rbtree.h \
+  $(agc_srcdir)/src/include/agc_timer.h
 	@echo Compiling $<...
 	if test -f "$(CSOURCEFILE)" -o -f "$(MODDIR)/$(CSOURCEFILE)"; then \
 		if test ! -z $(VERBOSE) ; then echo $(LTCOMPILE) -c -o $@ `test -f '$<' || echo '$(MODDIR)/'`$< ; fi ;\
@@ -207,8 +209,6 @@ $(agc_srcdir)/src/include/agc_apr.h:
 
 $(agc_srcdir)/src/include/agc_core.h:
 
-$(agc_srcdir)/src/include/agc_event.h:
-
 $(agc_srcdir)/src/include/agc_log.h:
 
 $(agc_srcdir)/src/include/agc_platform.h:
@@ -224,6 +224,10 @@ $(agc_srcdir)/src/include/agc_mprintf.h:
 $(agc_srcdir)/src/include/agc_json.h:
 
 $(agc_srcdir)/src/include/agc_event.h:
+
+$(agc_srcdir)/src/include/agc_rbtree.h:
+
+$(agc_srcdir)/src/include/agc_timer.h:
 
 .PHONY: all clean depend install distclean extraclean \
 	all-modules clean-modules depend-modules install-modules distclean-modules extraclean-modules \

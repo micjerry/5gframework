@@ -67,7 +67,6 @@ library_include_HEADERS = \
 	src/include/agc.h \
 	src/include/agc_apr.h \
 	src/include/agc_core.h \
-	src/include/agc_event.h \
 	src/include/agc_log.h \
 	src/include/agc_platform.h \
 	src/include/agc_types.h \

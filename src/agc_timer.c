@@ -29,6 +29,7 @@ AGC_DECLARE(agc_status_t) agc_timer_init(agc_memory_pool_t *pool)
                     agc_rbtree_insert_timer_value);
     
     agc_timer_launch_dispatch_thread();
+    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Timer init success.\n");
     return AGC_STATUS_SUCCESS;
 }
 
@@ -41,6 +42,7 @@ AGC_DECLARE(agc_status_t) agc_timer_shutdown(void)
         agc_yield(10000);
     }
     
+    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Timer shutdown success.\n");
     return AGC_STATUS_SUCCESS;
 }
 

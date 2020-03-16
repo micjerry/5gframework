@@ -27,7 +27,7 @@ static agc_log_binding_t *LOGGER_BINDINGS = NULL;
 static agc_mutex_t *LOGGER_BIND_LOCK = NULL;
 static agc_queue_t *LOG_MESSAGE_QUEUE = NULL;
 
-static int8_t LOG_THREAD_RUNNING = 0;
+static volatile int8_t LOG_THREAD_RUNNING = 0;
 static uint8_t MAX_LOG_LEVEL = 0;
 
 static int mods_loaded = 0;
@@ -106,6 +106,7 @@ AGC_DECLARE(agc_status_t) agc_log_init(agc_memory_pool_t *pool, agc_bool_t color
         COLORIZE = AGC_TRUE;
     }
     
+    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Log init success.\n");
     return AGC_STATUS_SUCCESS;
 }
 
@@ -120,6 +121,7 @@ AGC_DECLARE(agc_status_t) agc_log_shutdown(void)
     
     agc_thread_join(&st, log_thread);
     
+    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Log shutdown success.\n");
     return AGC_STATUS_SUCCESS;
 }
 

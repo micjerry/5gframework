@@ -42,6 +42,10 @@ AGC_DECLARE(void) agc_cond_next(void);
 
 AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err);
 
+AGC_DECLARE(void) agc_core_runtime_loop(void);
+
+AGC_DECLARE(agc_bool_t) agc_core_is_running(void);
+
 AGC_DECLARE(void) agc_core_set_globals(void);
 
 AGC_DECLARE(char *) agc_core_strdup(agc_memory_pool_t *pool, const char *todup);

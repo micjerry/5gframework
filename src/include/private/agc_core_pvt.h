@@ -28,6 +28,7 @@ struct agc_runtime {
     char hostname[256];
     int cpu_count;
     uint32_t runlevel;
+    uint8_t running;
     agc_mutex_t *uuid_mutex;
     agc_mutex_t *global_mutex;
     agc_log_level_t hard_log_level;

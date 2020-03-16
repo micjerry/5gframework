@@ -44,7 +44,23 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
         runtime.console = stdout;
     }
     
-    agc_log_init(runtime.memory_pool, AGC_FALSE);
+    //init log 
+    if (agc_log_init(runtime.memory_pool, AGC_FALSE) != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Log init failed.\n");
+        return AGC_STATUS_GENERR;
+    } 
+    
+    //init event 
+    if (agc_event_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Event init failed.\n");
+        return AGC_STATUS_GENERR;
+    }
+    
+    //init timer
+    if (agc_timer_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Timer init failed.\n");
+        return AGC_STATUS_GENERR;
+    }
     
     return AGC_STATUS_SUCCESS;
 }
@@ -217,3 +233,19 @@ AGC_DECLARE(void) agc_cond_next(void)
 {
     apr_sleep(1000);
 }
+
+AGC_DECLARE(void) agc_core_runtime_loop(void)
+{
+    runtime.running = 1;
+    while (runtime.running) {
+		agc_yield(1000000);
+	}
+}
+
+AGC_DECLARE(agc_bool_t) agc_core_is_running(void)
+{
+    return runtime.running ? AGC_TRUE : AGC_FALSE;
+}
+
+
+

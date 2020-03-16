@@ -94,5 +94,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     
+    agc_core_runtime_loop();
+    
     return 0;
 }

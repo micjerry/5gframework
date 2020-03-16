@@ -77,6 +77,8 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
     
     agc_event_launch_dispatch_threads();
     
+    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Event init success.\n");
+    
     return AGC_STATUS_SUCCESS;
 }
 
@@ -97,6 +99,8 @@ AGC_DECLARE(agc_status_t) agc_event_shutdown(void)
 		}
 		last = DISPATCH_THREAD_COUNT;
 	}
+    
+    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Event shutdown success.\n");
     
     return AGC_STATUS_SUCCESS;
 }
