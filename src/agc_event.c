@@ -12,7 +12,7 @@ struct agc_event_node {
 	struct agc_event_node *next;
 };
 
-static int SYSTEM_RUNNING = 0;
+static volatile int SYSTEM_RUNNING = 0;
 static int DISPATCH_THREAD_COUNT = 0;
 static agc_memory_pool_t *RUNTIME_POOL = NULL;
 static unsigned int MAX_DISPATCHER = 64;
@@ -49,7 +49,7 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
     
     assert(pool != NULL);
     
-    MAX_DISPATCHER = agc_core_cpu_count() + 1;
+    MAX_DISPATCHER = (agc_core_cpu_count() / 2) + 1;
 	if (MAX_DISPATCHER < 2) {
 		MAX_DISPATCHER = 2;
 	}
@@ -71,9 +71,7 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
         agc_queue_create(&EVENT_DISPATCH_QUEUES[i], DISPATCH_QUEUE_LIMIT, RUNTIME_POOL);
     }
     
-    agc_mutex_lock(EVENTSTATE_MUTEX);
 	SYSTEM_RUNNING = 1;
-	agc_mutex_unlock(EVENTSTATE_MUTEX);
     
     agc_event_launch_dispatch_threads();
     
@@ -87,9 +85,7 @@ AGC_DECLARE(agc_status_t) agc_event_shutdown(void)
     int x = 0;
     int last = 0;
     
-    agc_mutex_lock(EVENTSTATE_MUTEX);
 	SYSTEM_RUNNING = 0;
-	agc_mutex_unlock(EVENTSTATE_MUTEX);
     
     // wait all thread stop
 	while (x < 100 && DISPATCH_THREAD_COUNT) {
@@ -349,7 +345,7 @@ AGC_DECLARE(agc_status_t) agc_event_fire(agc_event_t **event)
         return AGC_STATUS_GENERR;
     }
     
-    if (SYSTEM_RUNNING <= 0) {
+    if (SYSTEM_RUNNING == 0) {
 		agc_event_destroy(event);
 		return AGC_STATUS_SUCCESS;
 	}

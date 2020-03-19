@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <sys/types.h>
+#include <sys/epoll.h>
 #include <errno.h>
 
 #include "agc_platform.h"

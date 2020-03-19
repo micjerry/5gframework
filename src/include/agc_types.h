@@ -171,4 +171,12 @@ typedef enum {
 #define AGC_PATH_SEPARATOR "/"
 #define AGC_BLANK_STRING ""
 
+typedef int agc_std_socket_t;
+typedef struct sockaddr agc_std_sockaddr_t;
+typedef struct agc_connection_s agc_connection_t;
+typedef struct agc_routine_s agc_routine_t;
+typedef struct agc_listening_s agc_listening_t;
+typedef void (*agc_routine_handler_func)(agc_routine_t *routine);
+typedef void (*agc_connection_handler_func)(agc_connection_t *c);
+
 #endif
