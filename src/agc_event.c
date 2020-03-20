@@ -142,6 +142,23 @@ AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, in
     return AGC_STATUS_SUCCESS;
 }
 
+AGC_DECLARE(agc_status_t) agc_event_create_callback(agc_event_t **event,  
+                                                    int source_id, 
+                                                    void *data, 
+                                                    agc_event_callback_func callback)
+{
+    agc_event_t * new_event;
+    
+    if (agc_event_create(&new_event, 0, source_id) != AGC_STATUS_SUCCESS) {
+        return AGC_STATUS_GENERR;
+    }
+    new_event->call_back = callback;
+    new_event->context = data;
+    
+    *event = new_event;
+    return AGC_STATUS_SUCCESS;
+}
+
 AGC_DECLARE(void) agc_event_destroy(agc_event_t **event)
 {
     agc_event_t *ep = *event;
@@ -566,13 +583,17 @@ static void agc_event_deliver(agc_event_t **event)
     agc_event_node_t *node;
     
     if (SYSTEM_RUNNING) {
-        agc_thread_rwlock_rdlock(EVENT_NODES_RWLOCK);
-        event_id = (*event)->event_id;
-        for (node = EVENT_NODES[event_id]; node; node = node->next) {
-            node->callback(*event);
-        }
+        if (event->call_back) {
+            event->call_back(event->data);
+        } else {
+            agc_thread_rwlock_rdlock(EVENT_NODES_RWLOCK);
+            event_id = (*event)->event_id;
+            for (node = EVENT_NODES[event_id]; node; node = node->next) {
+                node->callback(*event);
+            }
         
-        agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
+            agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
+        }
     }
     
     agc_event_destroy(event);

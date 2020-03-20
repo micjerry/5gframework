@@ -218,7 +218,7 @@ static void agc_epoll_launch_dispatch_threads()
     
     EPOLLFDS = agc_memory_alloc(module_pool, EPOLL_MAX_DISPATCHER * sizeof(int));
     EPOLL_DISPATCH_THREAD_RUNNING = agc_memory_alloc(module_pool, EPOLL_MAX_DISPATCHER * sizeof(uint8_t));
-    EPOLL_DISPATCH_THREADS = gc_memory_alloc(module_pool, EPOLL_MAX_DISPATCHER * sizeof(agc_thread_t *));
+    EPOLL_DISPATCH_THREADS = agc_memory_alloc(module_pool, EPOLL_MAX_DISPATCHER * sizeof(agc_thread_t *));
     EPOLL_THREADS_MUTEXS = agc_memory_alloc(module_pool, EPOLL_MAX_DISPATCHER * sizeof(agc_mutex_t *));
     
     for (index = 0; index < EPOLL_MAX_DISPATCHER; index++)
@@ -250,6 +250,7 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
     agc_connection_t *c;
     agc_routine_t *routine;
     agc_listening_t *listening;
+    agc_event_t *c_event;
     
     struct epoll_event events[MAX_EPOLLEVENTS];
     
@@ -297,15 +298,21 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
                     continue;
                 
                 if ((event_flag & (EPOLLERR|EPOLLHUP)) && routine->err_handle) {
-                    routine->err_handle(routine);
+                    agc_event_create_callback(&c_event, c->id, routine, routine->err_handle);
+                    agc_event_fire(&c_event);
+                    //routine->err_handle(routine);
                 }
                 
                 if ((event_flag & EPOLLIN) && routine->read_handle) {
-                    routine->read_handle(routine);
+                    agc_event_create_callback(&c_event, c->id, routine, routine->read_handle);
+                    agc_event_fire(&c_event);
+                    //routine->read_handle(routine);
                 }
                 
                 if ((event_flag & EPOLLOUT) && routine->write_handle) {
-                    routine->write_handle(routine);
+                    agc_event_create_callback(&c_event, c->id, routine, routine->write_handle);
+                    agc_event_fire(&c_event);
+                    //routine->write_handle(routine);
                 }
             }
         }

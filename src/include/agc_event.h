@@ -35,6 +35,8 @@ struct agc_event {
 	/*! the body of the event */
 	char *body;
     
+    agc_event_callback_func call_back;
+    
     /* timer event */
     char timer_set;
     
@@ -60,6 +62,8 @@ AGC_DECLARE(int) agc_event_alloc_source(const char *source_name);
 AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_name);
 
 AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, int source_id);
+
+AGC_DECLARE(agc_status_t) agc_event_create_callback(agc_event_t **event, int source_id, void *data, agc_event_callback_func callback);
 
 AGC_DECLARE(void) agc_event_destroy(agc_event_t **event);
 

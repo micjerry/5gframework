@@ -22,6 +22,10 @@ typedef struct {
     
 } agc_routine_actions_t;
 
+AGC_DECLARE(agc_status_t) agc_diver_init(agc_memory_pool_t *pool);
+
+AGC_DECLARE(agc_status_t) agc_diver_shutdown(void);
+
 AGC_DECLARE(void) agc_diver_register_routine(agc_routine_actions_t *routines);
 
 AGC_DECLARE(agc_status_t) agc_diver_add_connection(agc_connection_t *c);
