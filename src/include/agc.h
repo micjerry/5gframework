@@ -35,5 +35,7 @@
 #include "agc_timer.h"
 #include "agc_module.h"
 #include "agc_mprintf.h"
+#include "agc_driver.h"
+#include "agc_connection.h"
 
 #endif

@@ -79,6 +79,8 @@ library_include_HEADERS = \
 	src/include/agc_rbtree.h \
 	src/include/agc_timer.h \
 	src/include/agc_event.h \
+	src/include/agc_driver.h \
+	src/include/agc_connection.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -99,6 +101,8 @@ libagc_la_SOURCES = \
 	src/agc_mprintf.c \
 	src/agc_json.c \
 	src/agc_event.c \
+	src/agc_connection.c \
+	src/agc_driver.c \
 	$(NULL)
 
 libagc_la_CFLAGS  = $(CORE_CFLAGS)
