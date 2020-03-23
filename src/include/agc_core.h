@@ -42,6 +42,8 @@ AGC_DECLARE(void) agc_cond_next(void);
 
 AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err);
 
+AGC_DECLARE(agc_status_t) agc_core_destroy();
+
 AGC_DECLARE(void) agc_core_runtime_loop(void);
 
 AGC_DECLARE(agc_bool_t) agc_core_is_running(void);

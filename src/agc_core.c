@@ -62,6 +62,40 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
         return AGC_STATUS_GENERR;
     }
     
+    //init connection
+    if (agc_conn_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Connection init failed.\n");
+        return AGC_STATUS_GENERR;
+    }   
+    
+    //init driver
+    if (agc_diver_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Driver init failed.\n");
+        return AGC_STATUS_GENERR;
+    }  
+    
+    return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_core_destroy()
+{
+    agc_diver_shutdown();
+    agc_conn_shutdown();
+    agc_timer_shutdown();
+    agc_event_shutdown();
+    agc_log_shutdown();
+    
+    agc_safe_free(AGC_GLOBAL_dirs.mod_dir);
+    agc_safe_free(AGC_GLOBAL_dirs.conf_dir);
+    agc_safe_free(AGC_GLOBAL_dirs.log_dir);
+    agc_safe_free(AGC_GLOBAL_dirs.run_dir);
+    agc_safe_free(AGC_GLOBAL_dirs.certs_dir);
+
+    if (runtime.memory_pool) {
+		apr_pool_destroy(runtime.memory_pool);
+		apr_terminate();
+	}
+    
     return AGC_STATUS_SUCCESS;
 }
 

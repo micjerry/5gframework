@@ -96,5 +96,7 @@ int main(int argc, char *argv[])
     
     agc_core_runtime_loop();
     
+    agc_core_destroy();
+    
     return 0;
 }
