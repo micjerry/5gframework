@@ -29,7 +29,7 @@ AGC_DECLARE(agc_status_t) agc_conn_shutdown(void)
 AGC_DECLARE(agc_listening_t *) agc_conn_create_listening(agc_std_sockaddr_t *addr, 
                                                          int socklen, 
                                                          agc_memory_pool_t *pool,
-                                                         agc_connection_handler_func handler);
+                                                         agc_connection_handler_func handler)
 {
     agc_listening_t *listening;
     struct sockaddr *sa;
@@ -59,9 +59,9 @@ AGC_DECLARE(agc_connection_t *) agc_create_connection(agc_std_socket_t s,
                                                       int socklen, 
                                                       agc_memory_pool_t *pool,
                                                       void *context, 
-                                                      agc_routine_handler_func read,
-                                                      agc_routine_handler_func write,
-                                                      agc_routine_handler_func err)
+                                                      agc_event_callback_func read,
+                                                      agc_event_callback_func write,
+                                                      agc_event_callback_func err)
 {
     struct sockaddr *sa;
     agc_connection_t *new_connection;
@@ -129,7 +129,7 @@ AGC_DECLARE(void) agc_free_connection(agc_connection_t *c)
     if (!c)
         return;
     
-    agc_memory_destroy_pool(c->pool);
+    agc_memory_destroy_pool(&c->pool);
 }
 
 static int next_id()

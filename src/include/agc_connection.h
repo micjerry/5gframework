@@ -49,9 +49,9 @@ AGC_DECLARE(agc_connection_t *) agc_create_connection(agc_std_socket_t s,
                                                       int socklen, 
                                                       agc_memory_pool_t *pool,
                                                       void *context, 
-                                                      agc_routine_handler_func read,
-                                                      agc_routine_handler_func write,
-                                                      agc_routine_handler_func err);
+                                                      agc_event_callback_func read,
+                                                      agc_event_callback_func write,
+                                                      agc_event_callback_func err);
 
 AGC_DECLARE(agc_connection_t *)  agc_get_connection(agc_listening_t *listening);
 

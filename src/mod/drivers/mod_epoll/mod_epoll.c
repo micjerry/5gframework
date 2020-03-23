@@ -30,13 +30,13 @@ static agc_status_t agc_epoll_add_connection(agc_connection_t *c);
 
 static agc_status_t agc_epoll_del_connection(agc_connection_t *c);
 
-static agc_status_t agc_epoll_add_event(agc_routine_s *routine, uint32_t event);
+static agc_status_t agc_epoll_add_event(agc_routine_t *routine, uint32_t event);
 
-static agc_status_t agc_epoll_del_event(agc_routine_s *routine, uint32_t event);
+static agc_status_t agc_epoll_del_event(agc_routine_t *routine, uint32_t event);
 
 static agc_routine_actions_t agc_epoll_routine = {
     agc_epoll_add_event,
-    agc_epoll_del_event.
+    agc_epoll_del_event,
     agc_epoll_add_connection,
     agc_epoll_del_connection
 };
@@ -134,9 +134,10 @@ static agc_status_t agc_epoll_del_connection(agc_connection_t *c)
     return AGC_STATUS_SUCCESS;
 }
 
-static agc_status_t agc_epoll_add_event(agc_routine_s *routine, uint32_t event)
+static agc_status_t agc_epoll_add_event(agc_routine_t *routine, uint32_t event)
 {
     int op;
+    struct epoll_event  ee;
     uint32_t events, prev;
     agc_connection_t *c = (agc_connection_t *)routine->data;
     int index = 0;
@@ -175,7 +176,7 @@ static agc_status_t agc_epoll_add_event(agc_routine_s *routine, uint32_t event)
     return AGC_STATUS_SUCCESS;
 }
 
-static agc_status_t agc_epoll_del_event(agc_routine_s *routine, uint32_t event)
+static agc_status_t agc_epoll_del_event(agc_routine_t *routine, uint32_t event)
 {
     int  op, index;
     agc_connection_t *c;
@@ -254,7 +255,7 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
     
     struct epoll_event events[MAX_EPOLLEVENTS];
     
-    for (my_id = 0; my_id < EPOLL_DISPATCH_THREADS; my_id++) {
+    for (my_id = 0; my_id < EPOLL_MAX_DISPATCHER; my_id++) {
 		if (EPOLL_DISPATCH_THREADS[my_id] == thread) {
 			break;
 		}
@@ -269,9 +270,9 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
         if (!SYSTEM_RUNNING)
             break;
         
-        agc_mutex_lock(EPOLL_THREADS_MUTEXS[index]);
+        agc_mutex_lock(EPOLL_THREADS_MUTEXS[my_id]);
         ret = epoll_wait(epollfd, events, MAX_EPOLLEVENTS, 10);
-        agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
+        agc_mutex_unlock(EPOLL_THREADS_MUTEXS[my_id]);
         
         if (ret == -1) {
             agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "epoll_wait return error.\n");

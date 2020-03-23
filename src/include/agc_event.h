@@ -51,8 +51,6 @@ typedef struct agc_event agc_event_t;
 
 typedef struct agc_event_node agc_event_node_t;
 
-typedef void (*agc_event_callback_func) (agc_event_t *);
-
 AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool);
 
 AGC_DECLARE(agc_status_t) agc_event_shutdown(void);

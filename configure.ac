@@ -349,7 +349,8 @@ AC_CONFIG_FILES([Makefile
         build/modmake.rules
         src/Makefile
         src/mod/Makefile
-        src/mod/loggers/mod_logfile/Makefile])
+        src/mod/loggers/mod_logfile/Makefile
+        src/mod/drivers/mod_epoll/Makefile])
 AC_OUTPUT
 
 echo 

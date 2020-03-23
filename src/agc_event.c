@@ -581,15 +581,18 @@ static void agc_event_deliver(agc_event_t **event)
 {
     int event_id = 0;
     agc_event_node_t *node;
+    agc_event_t *pevent = *event;
+    
+    assert(pevent);
     
     if (SYSTEM_RUNNING) {
-        if (event->call_back) {
-            event->call_back(event->data);
+        if (pevent->call_back) {
+            pevent->call_back(pevent->context);
         } else {
             agc_thread_rwlock_rdlock(EVENT_NODES_RWLOCK);
-            event_id = (*event)->event_id;
+            event_id = pevent->event_id;
             for (node = EVENT_NODES[event_id]; node; node = node->next) {
-                node->callback(*event);
+                node->callback(pevent);
             }
         
             agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
