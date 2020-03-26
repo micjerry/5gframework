@@ -14,7 +14,7 @@ static volatile int SYSTEM_RUNNING = 0;
 
 static volatile int SYSTEM_SHUTDOWN = 0;
 
-static agc_time_t current_ms;
+static agc_time_t current_time;
 
 static void agc_timer_launch_dispatch_thread();
 
@@ -56,6 +56,7 @@ AGC_DECLARE(void) agc_timer_del_timer(agc_event_t *ev)
 AGC_DECLARE(void) agc_timer_add_timer(agc_event_t *ev, agc_msec_t timer)
 {
     agc_msec_t      key;
+    agc_time_t current_ms = (current_time / 1000);
 
     key = current_ms + timer;
     
@@ -74,7 +75,7 @@ AGC_DECLARE(void) agc_timer_add_timer(agc_event_t *ev, agc_msec_t timer)
 
 AGC_DECLARE(agc_time_t) agc_timer_now()
 {
-    return current_ms;
+    return current_time;
 }
 
 static void agc_timer_launch_dispatch_thread()
@@ -97,13 +98,15 @@ static void *agc_timer_dispatch_timer(agc_thread_t *thread, void *obj)
     agc_rbtree_t *timertree = (agc_rbtree_t *)obj;  
     agc_event_t        *ev;
     agc_rbtree_node_t  *node, *root, *sentinel;
+    agc_time_t current_ms;
     
     SYSTEM_RUNNING = 1;
     SYSTEM_SHUTDOWN = 0;
     
     sentinel = timertree->sentinel;
     for ( ;; ) {
-        current_ms = (agc_time_now() / 1000);
+        current_time = agc_time_now();
+        current_ms = (current_time / 1000);
         if (!SYSTEM_RUNNING)
             break;
         

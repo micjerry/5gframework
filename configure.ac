@@ -278,6 +278,13 @@ if test x$have_sctp_lib == xno; then
 fi
 
 PKG_CHECK_MODULES([YAML], yaml-0.1 >= 0.1.4)
+PKG_CHECK_MODULES([HIREDIS], [hiredis >= 0.11.0],[
+  AM_CONDITIONAL([HAVE_HIREDIS],[true])],[
+  AC_MSG_RESULT([no]); AM_CONDITIONAL([HAVE_HIREDIS],[false])])
+PKG_CHECK_MODULES([AMQP], [librabbitmq >= 0.5.2],[
+  AM_CONDITIONAL([HAVE_AMQP],[true])],[
+  AC_MSG_RESULT([no]); AM_CONDITIONAL([HAVE_AMQP],[false])])
+PKG_CHECK_MODULES([SQLITE], [sqlite3 >= 3.6.20])
 
 AC_SUBST(YAML_CFLAGS)
 AC_SUBST(YAML_LIBS)

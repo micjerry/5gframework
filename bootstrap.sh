@@ -3,6 +3,13 @@
 BASEDIR=`pwd`;
 LIBDIR=${BASEDIR}/libs;
 
+format_file() {
+  find . -name "*.py" | xargs dos2unix
+  find . -name "*.py" | xargs chmod +x
+  find . -name "*.sh" | xargs dos2unix
+  find . -name "*.sh" | xargs chmod +x
+}
+
 setup_gnu() {
   # keep automake from making us magically GPL, and to stop
   # complaining about missing files.
@@ -285,6 +292,7 @@ bootstrap_agc() {
 }
 
 run() {
+  format_file
   setup_gnu
   check_make
   check_ac_ver

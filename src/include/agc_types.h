@@ -181,4 +181,7 @@ typedef void (*agc_connection_handler_func)(agc_connection_t *c);
 
 typedef void (*agc_event_callback_func)(void *data);
 
+typedef struct keyvalues_s keyvalues_t;
+typedef struct keys_s keys_t;
+
 #endif
