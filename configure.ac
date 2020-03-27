@@ -298,7 +298,9 @@ PKG_CHECK_MODULES([AMQP], [librabbitmq >= 0.5.2],[
   AM_CONDITIONAL([HAVE_AMQP],[true])],[
   AC_MSG_RESULT([no]); AM_CONDITIONAL([HAVE_AMQP],[false])])
 PKG_CHECK_MODULES([SQLITE], [sqlite3 >= 3.6.20])
-PKG_CHECK_MODULES([HIREDIS_VIP], hiredis_vip >= 1.0.0)
+PKG_CHECK_MODULES([HIREDIS_VIP], [hiredis_vip >= 1.0.0],[
+  AM_CONDITIONAL([HAVE_HIREDIS_VIP],[true])],[
+  AC_MSG_RESULT([no]); AM_CONDITIONAL([HAVE_HIREDIS_VIP],[false])])
 
 AC_SUBST(YAML_CFLAGS)
 AC_SUBST(YAML_LIBS)
@@ -371,7 +373,10 @@ AC_CONFIG_FILES([Makefile
         src/Makefile
         src/mod/Makefile
         src/mod/loggers/mod_logfile/Makefile
-        src/mod/drivers/mod_epoll/Makefile])
+        src/mod/drivers/mod_epoll/Makefile
+        src/mod/caches/mod_redis/Makefile
+        src/mod/dbs/mod_sqlite/Makefile
+        src/mod/mqs/mod_rabbitmq/Makefile])
 AC_OUTPUT
 
 echo 

@@ -1,7 +1,7 @@
 include $(top_srcdir)/build/modmake.rulesam
 MODNAME=mod_redis
 
-if HAVE_HIREDIS
+if HAVE_HIREDIS_VIP
 
 mod_LTLIBRARIES = mod_redis.la
 mod_redis_la_SOURCES  = mod_redis.c
