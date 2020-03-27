@@ -105,6 +105,22 @@ AC_DEFINE_UNQUOTED([AGC_DATA_DIR],"${datadir}",[directory for data files])
 AC_DEFINE_UNQUOTED([AGC_PREFIX_DIR],"${prefix}",[directory for base])
 
 #######################################
+####           functions           ####
+#######################################
+
+path_push_unique () {
+  x="$(eval echo \$$1)"
+  x="$(path_remove "$x" "$2")"
+  if test -z "$x"; then
+    eval export $1="$2"
+  else
+    eval export $1="$2:$x"
+  fi
+}
+
+path_push_unique PKG_CONFIG_PATH /usr/local/lib/pkgconfig
+
+#######################################
 ####  Checks for gcc and headers.  ####
 #######################################
 
@@ -278,13 +294,11 @@ if test x$have_sctp_lib == xno; then
 fi
 
 PKG_CHECK_MODULES([YAML], yaml-0.1 >= 0.1.4)
-PKG_CHECK_MODULES([HIREDIS], [hiredis >= 0.11.0],[
-  AM_CONDITIONAL([HAVE_HIREDIS],[true])],[
-  AC_MSG_RESULT([no]); AM_CONDITIONAL([HAVE_HIREDIS],[false])])
 PKG_CHECK_MODULES([AMQP], [librabbitmq >= 0.5.2],[
   AM_CONDITIONAL([HAVE_AMQP],[true])],[
   AC_MSG_RESULT([no]); AM_CONDITIONAL([HAVE_AMQP],[false])])
 PKG_CHECK_MODULES([SQLITE], [sqlite3 >= 3.6.20])
+PKG_CHECK_MODULES([HIREDIS_VIP], hiredis_vip >= 1.0.0)
 
 AC_SUBST(YAML_CFLAGS)
 AC_SUBST(YAML_LIBS)
