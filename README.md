@@ -1,13 +1,7 @@
 #install deps
 
-#setup yaml
-yum install lksctp-tools-devel
+yum install -y gcc git autoconf automake libtool libyaml-devel lksctp-tools-devel librabbitmq-devel sqlite-devel expat-devel
 
-#setup rabbitmq
-yum install librabbitmq-devel
-
-#setup sqlite3
-yum install libsqlite3x-devel
 
 #setup hiredis-vip
 git clone https://github.com/vipshop/hiredis-vip.git

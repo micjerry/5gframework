@@ -2,6 +2,7 @@
 
 BASEDIR=`pwd`;
 LIBDIR=${BASEDIR}/libs;
+BUILD_DESC="           to build AGC from source."
 
 format_file() {
   find . -name "*.py" | xargs dos2unix
@@ -26,7 +27,7 @@ check_ac_ver() {
   if test -z "$ac_version"; then
     echo "bootstrap: autoconf not found."
     echo "           You need autoconf version 2.59 or newer installed"
-    echo "           to build FreeSWITCH from source."
+    echo ${BUILD_DESC}
     exit 1
   fi
   if test `uname -s` = "OpenBSD" && test "$ac_version" = "2.62"; then
@@ -39,7 +40,7 @@ check_ac_ver() {
   if test "$1" = "2" -a "$2" -lt "59" || test "$1" -lt "2"; then
     echo "bootstrap: autoconf version $ac_version found."
     echo "           You need autoconf version 2.59 or newer installed"
-    echo "           to build FreeSWITCH from source."
+    echo ${BUILD_DESC}
     exit 1
   else
     echo "bootstrap: autoconf version $ac_version (ok)"
@@ -52,7 +53,7 @@ check_am_ver() {
   if test -z "$am_version"; then
     echo "bootstrap: automake not found."
     echo "           You need automake version 1.7 or newer installed"
-    echo "           to build FreeSWITCH from source."
+    echo ${BUILD_DESC}
     exit 1
   fi
   IFS=_; set $am_version; IFS=' '
@@ -61,7 +62,7 @@ check_am_ver() {
   if test "$1" = "1" -a "$2" -lt "7"; then
     echo "bootstrap: automake version $am_version found."
     echo "           You need automake version 1.7 or newer installed"
-    echo "           to build FreeSWITCH from source."
+    echo ${BUILD_DESC}
     exit 1
   else
     echo "bootstrap: automake version $am_version (ok)"
@@ -74,7 +75,7 @@ check_acl_ver() {
   if test -z "$acl_version"; then
     echo "bootstrap: aclocal not found."
     echo "           You need aclocal version 1.7 or newer installed"
-    echo "           to build FreeSWITCH from source."
+    echo ${BUILD_DESC}
     exit 1
   fi
   IFS=_; set $acl_version; IFS=' '
@@ -83,7 +84,7 @@ check_acl_ver() {
   if test "$1" = "1" -a "$2" -lt "7"; then
     echo "bootstrap: aclocal version $acl_version found."
     echo "           You need aclocal version 1.7 or newer installed"
-    echo "           to build FreeSWITCH from source."
+    echo ${BUILD_DESC}
     exit 1
   else
     echo "bootstrap: aclocal version $acl_version (ok)"
@@ -101,7 +102,8 @@ check_lt_ver() {
   lt_pversion=`$libtool --version 2>/dev/null|sed -e 's/([^)]*)//g;s/^[^0-9]*//;s/[- ].*//g;q'`
   if test -z "$lt_pversion"; then
     echo "bootstrap: libtool not found."
-    echo "           You need libtool version 1.5.14 or newer to build FreeSWITCH from source."
+    echo "           You need libtool version 1.5.14 or newer installed"
+    echo ${BUILD_DESC}
     exit 1
   fi
   lt_version=`echo $lt_pversion|sed -e 's/\([a-z]*\)$/.\1/'`
@@ -126,7 +128,8 @@ check_lt_ver() {
     echo "bootstrap: libtool version $lt_pversion (ok)"
   else
     echo "bootstrap: libtool version $lt_pversion found."
-    echo "           You need libtool version 1.5.14 or newer to build FreeSWITCH from source."
+    echo "           You need libtool version 1.5.14 or newer to installed"
+    echo ${BUILD_DESC}
     exit 1
   fi
 }
@@ -289,6 +292,7 @@ bootstrap_agc() {
   ${AUTOHEADER:-autoheader}
   ${AUTOMAKE:-automake} --no-force --add-missing --copy
   rm -rf autom4te*.cache
+  sed -i "s/need_relink=yes/need_relink=no/g" build/ltmain.sh
 }
 
 run() {

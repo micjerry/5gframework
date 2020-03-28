@@ -107,6 +107,8 @@ libagc_la_SOURCES = \
 	src/agc_driver.c \
 	$(NULL)
 
+$(libagc_la_SOURCES): $(CORE_LIBS) $(agc_builddir)/modules.conf  
+
 libagc_la_CFLAGS  = $(CORE_CFLAGS)
 libagc_la_LDFLAGS = -version-info 1:0:0 $(AM_LDFLAGS) -no-undefined
 libagc_la_LIBADD = $(CORE_LIBS) $(APR_LIBS) $(YAML_LIBS)
