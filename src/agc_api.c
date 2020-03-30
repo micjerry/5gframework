@@ -1,11 +1,15 @@
 #include <agc.h>
 
 static agc_memory_pool_t *RUNTIME_POOL = NULL;
+static agc_api_interface_t *APIS = NULL;
+static agc_mutex_t *APIS_MUTEX = NULL;
 
 AGC_DECLARE(agc_status_t) agc_api_init(agc_memory_pool_t *pool)
 {
     assert(pool);
     RUNTIME_POOL = pool;
+    
+    agc_mutex_init(&APIS_MUTEX, AGC_MUTEX_NESTED, RUNTIME_POOL);
     
     agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Api init success.\n");
     return AGC_STATUS_SUCCESS;
@@ -17,11 +21,68 @@ AGC_DECLARE(agc_status_t) agc_api_shutdown(void)
     return AGC_STATUS_SUCCESS;
 }
 
+AGC_DECLARE(agc_status_t) agc_api_register(agc_api_interface_t *api)
+{
+    assert(api);
+    agc_mutex_lock(APIS_MUTEX);
+    api->next = NULL;
+    
+    if (APIS != NULL) {
+        api->next = APIS;
+    }
+    
+    APIS = api;
+    agc_mutex_unlock(APIS_MUTEX);
+    return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_api_interface_t *) agc_api_find(const char *cmd)
+{
+    agc_api_interface_t *api = NULL;
+    agc_api_interface_t *result = NULL;
+    
+    agc_mutex_lock(APIS_MUTEX);
+    
+    for (api = APIS; api != NULL; api = api->next) {
+        if (!strcasecmp(api->name, cmd)) {
+            result = api;
+            break;
+        }
+    }
+    
+    agc_mutex_unlock(APIS_MUTEX);
+    
+    return result;
+}
+
+AGC_DECLARE(agc_status_t) agc_api_execute(const char *cmd, const char *arg, agc_stream_handle_t *stream)
+{
+    char *command  = (char *)cmd;
+    char *argument = (char *)arg;
+    agc_api_interface_t *api = NULL;
+    agc_status_t status;
+    
+    assert(stream != NULL);
+	assert(stream->data != NULL);
+	assert(stream->write_function != NULL);
+    
+    if (command && (api = agc_api_find(command)) != NULL) {
+        if ((status = api->function(argument, stream)) != AGC_STATUS_SUCCESS) {
+            stream->write_function(stream, "COMMAND RETURN ERROR!\n");
+        }
+    } else {
+        status = AGC_STATUS_FALSE;
+		stream->write_function(stream, "INVALID COMMAND!\n");
+    }
+    
+    return status;
+}
+
 AGC_DECLARE(void) agc_api_stand_stream(agc_stream_handle_t *stream)
 {
     assert(stream);
     
-    memset(stream, 0, sizeof(agc_stream_handle_t))
+    memset(stream, 0, sizeof(agc_stream_handle_t));
     stream->data = malloc(AGC_CMD_CHUNK_LEN);
     memset(stream->data, 0, AGC_CMD_CHUNK_LEN);
     stream->end = stream->data;

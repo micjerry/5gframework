@@ -54,8 +54,6 @@ AM_CFLAGS   = $(AGC_AM_CFLAGS) $(YAML_CFLAGS)
 AM_CPPFLAGS = $(AGC_AM_CXXFLAGS)
 AM_LDFLAGS  = $(AGC_AM_LDFLAGS) $(AM_LIBAPR_LDFLAGS) $(AM_LIBAPU_LDFLAGS)
 
-
-
 ##
 ## libagc
 ##
@@ -83,6 +81,7 @@ library_include_HEADERS = \
 	src/include/agc_event.h \
 	src/include/agc_driver.h \
 	src/include/agc_connection.h \
+	src/include/agc_api.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -105,6 +104,7 @@ libagc_la_SOURCES = \
 	src/agc_event.c \
 	src/agc_connection.c \
 	src/agc_driver.c \
+	src/agc_api.c \
 	$(NULL)
 
 $(libagc_la_SOURCES): $(CORE_LIBS) $(agc_builddir)/modules.conf  

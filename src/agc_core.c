@@ -74,6 +74,12 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
         return AGC_STATUS_GENERR;
     }  
     
+    //init api
+    if (agc_api_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Api init failed.\n");
+        return AGC_STATUS_GENERR;
+    }  
+    
     return AGC_STATUS_SUCCESS;
 }
 
@@ -84,6 +90,7 @@ AGC_DECLARE(agc_status_t) agc_core_destroy()
     agc_timer_shutdown();
     agc_event_shutdown();
     agc_log_shutdown();
+    agc_api_shutdown();
     
     agc_safe_free(AGC_GLOBAL_dirs.mod_dir);
     agc_safe_free(AGC_GLOBAL_dirs.conf_dir);
