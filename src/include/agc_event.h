@@ -6,6 +6,8 @@
 #define EVENT_NULL_SOURCEID 0
 #define EVENT_ID_LIMIT 1024
 
+#define EVENT_ID_EVENTSOCKET 1
+
 struct agc_event_header {
 	/*! the header name */
 	char *name;

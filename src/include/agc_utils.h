@@ -180,6 +180,8 @@ static inline int _zstr(const char *s)
 #define agc_safe_free(it) if (it) {free(it);it=NULL;}
 #define agc_set_string(_dst, _src) agc_copy_string(_dst, _src, sizeof(_dst))
 
+#define AGC_STATUS_IS_BREAK(x) (x == AGC_STATUS_BREAK || x == 730035 || x == 35 || x == AGC_STATUS_INTR)
+
 
 AGC_DECLARE(const char *) agc_cut_path(const char *in);
 AGC_DECLARE(agc_bool_t) agc_is_number(const char *str);
