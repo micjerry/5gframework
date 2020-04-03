@@ -224,9 +224,14 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
         }   
     } else if (!strncasecmp(cmd, "event", 5)) {
         char *next, *cur;
-        
         uint32_t count = 0, key_count = 0;
 		uint8_t custom = 0;
+        uint32_t x = 0;
+        
+        //re subscribed clear current
+		for (x = 0; x < EVENT_ID_LIMIT; x++) {
+			conn->event_list[x] = 0;
+		}
         
         strip_cr(cmd);
 		cur = cmd + 5;
@@ -242,7 +247,6 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
                 if (agc_event_get_id(cur, &event_id) == AGC_STATUS_SUCCESS) {
                     key_count++;
                     if (event_id == EVENT_ID_ALL) {
-                        uint32_t x = 0;
 						for (x = 0; x < EVENT_ID_LIMIT; x++) {
 							conn->event_list[x] = 1;
 						}
@@ -256,6 +260,7 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
         }
         
         if (!key_count) {
+            conn->has_event = 0;
 			agc_snprintf(reply, reply_len, "-ERR no keywords supplied");
 			return status;
 		}
