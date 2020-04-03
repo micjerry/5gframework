@@ -21,6 +21,13 @@ typedef intptr_t agc_ssize_t;
 
 typedef int32_t agc_int32_t;
 
+#ifndef FALSE
+#define FALSE 0
+#endif
+#ifndef TRUE
+#define TRUE (!FALSE)
+#endif
+
 #if UINTPTR_MAX == 0xffffffffffffffff
 #define AGC_64BIT 1
 #endif

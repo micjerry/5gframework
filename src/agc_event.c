@@ -64,6 +64,8 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
     EVENT_DISPATCH_QUEUES = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(agc_queue_t *));
     EVENT_DISPATCH_QUEUE_RUNNING = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(uint8_t));
     
+    event_templates[EVENT_ID_ALL] = "all";
+    
     // create dispatch queues
     for (i = 0; i < MAX_DISPATCHER; i++)
     {
@@ -113,7 +115,7 @@ AGC_DECLARE(int) agc_event_alloc_source(const char *source_name)
 
 AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_name)
 {
-    if (event_id > EVENT_ID_LIMIT)
+    if (EVENT_ID_IS_INVALID(event_id))
         return AGC_STATUS_GENERR;
     
     agc_thread_rwlock_wrlock(EVENT_TEMPLATES_RWLOCK);
@@ -126,6 +128,32 @@ AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_nam
     event_templates[event_id] = agc_core_strdup(RUNTIME_POOL, event_name);
     
     agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
+    return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_get_id(const char *event_name, int *event_id)
+{
+    int i = 0;
+    int found = 0;
+    
+    if (!event_name || !event_id)
+        return AGC_STATUS_GENERR;
+    
+    agc_thread_rwlock_rdlock(EVENT_TEMPLATES_RWLOCK);
+    for (i = 0; i < EVENT_ID_LIMIT; i++) {
+        if (!strcasecmp(event_name, event_templates[i])) {
+            *event_id = i;
+            found = 1;
+            break;
+        }
+    }
+        
+    agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
+    
+    if (!found) {
+        return AGC_STATUS_GENERR;
+    }
+        
     return AGC_STATUS_SUCCESS;
 }
 
@@ -237,11 +265,11 @@ AGC_DECLARE(agc_status_t) agc_event_del_header(agc_event_t *event, const char *h
     return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(agc_event_header_t *) agc_event_get_header(agc_event_t *event, const char *header_name)
+AGC_DECLARE(char *) agc_event_get_header(agc_event_t *event, const char *header_name)
 {
     agc_event_header_t *hp;
     if ((hp = agc_event_get_header_ptr(event, header_name))) {
-        return hp;
+        return hp->value;
     }
     
     return NULL;
@@ -592,6 +620,10 @@ static void agc_event_deliver(agc_event_t **event)
             agc_thread_rwlock_rdlock(EVENT_NODES_RWLOCK);
             event_id = pevent->event_id;
             for (node = EVENT_NODES[event_id]; node; node = node->next) {
+                node->callback(pevent);
+            }
+            
+            for (node = EVENT_NODES[EVENT_ID_ALL]; node; node = node->next) {
                 node->callback(pevent);
             }
         

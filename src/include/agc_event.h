@@ -6,7 +6,10 @@
 #define EVENT_NULL_SOURCEID 0
 #define EVENT_ID_LIMIT 1024
 
+#define EVENT_ID_ALL 0
 #define EVENT_ID_EVENTSOCKET 1
+
+#define EVENT_ID_IS_INVALID(x) (x == EVENT_ID_ALL || x >= EVENT_ID_LIMIT)
 
 struct agc_event_header {
 	/*! the header name */
@@ -61,6 +64,8 @@ AGC_DECLARE(int) agc_event_alloc_source(const char *source_name);
 
 AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_name);
 
+AGC_DECLARE(agc_status_t) agc_event_get_id(const char *event_name, int *event_id);
+
 AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, int source_id);
 
 AGC_DECLARE(agc_status_t) agc_event_create_callback(agc_event_t **event, int source_id, void *data, agc_event_callback_func callback);
@@ -73,7 +78,7 @@ AGC_DECLARE(agc_status_t) agc_event_add_header_string(agc_event_t *event, const 
 
 AGC_DECLARE(agc_status_t) agc_event_del_header(agc_event_t *event, const char *header_name);
 
-AGC_DECLARE(agc_event_header_t *) agc_event_get_header(agc_event_t *event, const char *header_name);
+AGC_DECLARE(char *) agc_event_get_header(agc_event_t *event, const char *header_name);
 
 AGC_DECLARE(agc_status_t) agc_event_add_body(agc_event_t *event, const char *fmt, ...) PRINTF_FUNCTION(2, 3);
 

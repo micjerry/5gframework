@@ -21,6 +21,7 @@ struct event_connect_s {
     uint8_t has_event;
     uint8_t is_running;
     char *ebuf;
+    uint8_t event_list[EVENT_ID_LIMIT + 1];
     event_connect_t *next;
 };
 
@@ -39,6 +40,8 @@ struct eventsocket_profile_s {
     char ip[64];
     uint16_t port;
     int done;
+    int threads;
+    agc_mutex_t *mutex;
 };
 
 typedef struct api_command_s api_command_t;

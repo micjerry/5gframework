@@ -376,7 +376,8 @@ AC_CONFIG_FILES([Makefile
         src/mod/drivers/mod_epoll/Makefile
         src/mod/caches/mod_redis/Makefile
         src/mod/dbs/mod_sqlite/Makefile
-        src/mod/mqs/mod_rabbitmq/Makefile])
+        src/mod/mqs/mod_rabbitmq/Makefile
+        src/mod/eventhandlers/mod_eventsocket/Makefile])
 AC_OUTPUT
 
 echo 

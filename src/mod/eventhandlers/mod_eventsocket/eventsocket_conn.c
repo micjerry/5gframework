@@ -11,6 +11,8 @@ agc_status_t read_packet(event_connect_t *conn, agc_event_t **event)
     void *pop;
     agc_status_t status = AGC_STATUS_SUCCESS;
     uint32_t buf_len = 0;
+    int count = 0;
+    int clen = 0;
     uint8_t crcount = 0;
     
     *event = NULL;
@@ -110,9 +112,9 @@ agc_status_t read_packet(event_connect_t *conn, agc_event_t **event)
                                         
 										while (clen > 0) {
                                             mlen = clen;
-                                            status = agc_socket_recv(listener->sock, p, &mlen);
+                                            status = agc_socket_recv(conn->sock, p, &mlen);
 
-											if (prefs.done || (!AGC_STATUS_IS_BREAK(status) && status != AGC_STATUS_SUCCESS)){
+											if (profile.done || (!AGC_STATUS_IS_BREAK(status) && status != AGC_STATUS_SUCCESS)){
                                                 free(body);
                                                 agc_safe_free(mbuf);  
                                                 return AGC_STATUS_FALSE;
@@ -220,10 +222,45 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
         if (event) {
             agc_event_destroy(event);
         }   
-    }
-    
-    if (!strncasecmp(cmd, "event", 5)) {
+    } else if (!strncasecmp(cmd, "event", 5)) {
+        char *next, *cur;
         
+        uint32_t count = 0, key_count = 0;
+		uint8_t custom = 0;
+        
+        strip_cr(cmd);
+		cur = cmd + 5;
+        
+        if (cur && (cur = strchr(cur, ' '))) {
+            for (cur++; cur; count++) {
+                int event_id;
+                
+                if ((next = strchr(cur, ' '))) {
+					*next++ = '\0';
+				}
+                
+                if (agc_event_get_id(cur, &event_id) == AGC_STATUS_SUCCESS) {
+                    key_count++;
+                    if (event_id == EVENT_ID_ALL) {
+                        uint32_t x = 0;
+						for (x = 0; x < EVENT_ID_LIMIT; x++) {
+							conn->event_list[x] = 1;
+						}
+                    } else {
+                        conn->event_list[event_id] = 1;
+                    }
+                }
+            }
+            
+            cur = next;
+        }
+        
+        if (!key_count) {
+			agc_snprintf(reply, reply_len, "-ERR no keywords supplied");
+			return status;
+		}
+        
+        conn->has_event = 1;
     }
     
     return status; 
@@ -244,12 +281,18 @@ static void *api_exec(agc_thread_t *thread, void *obj)
     char *reply, *freply = NULL;
 	agc_status_t status;
     
+    if (thread) {
+        agc_mutex_lock(profile.mutex);
+	    profile.threads++;
+        agc_mutex_unlock(profile.mutex);
+    }
+    
     if (!acs) {
         agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Internal error.\n");
 		return NULL;
 	}
     
-    if (!acs->conn || !conn->is_running ||
+    if (!acs->conn || !acs->conn->is_running ||
 		!acs->conn->rwlock || agc_thread_rwlock_tryrdlock(acs->conn->rwlock) != AGC_STATUS_SUCCESS) {
         agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Error! cannot get read lock.\n");
 		acs->ack = -1;
@@ -257,12 +300,12 @@ static void *api_exec(agc_thread_t *thread, void *obj)
 	}
     
     acs->ack = 1;
-    agc_api_stand_stream(stream);
+    agc_api_stand_stream(&stream);
     
     if (acs->console_execute) {
         //TODO
     } else {
-        status = agc_api_execute(acs->api_cmd, acs->arg, NULL, &stream);
+        status = agc_api_execute(acs->api_cmd, acs->arg, &stream);
     }
     
     if (status == AGC_STATUS_SUCCESS) {
@@ -299,6 +342,12 @@ static void *api_exec(agc_thread_t *thread, void *obj)
     if (acs->conn->rwlock) {
 		agc_thread_rwlock_unlock(acs->conn->rwlock);
 	}
+    
+    if (thread) {
+        agc_mutex_lock(profile.mutex);
+	    profile.threads--;
+        agc_mutex_unlock(profile.mutex);
+    }
     
     return NULL;
 }
