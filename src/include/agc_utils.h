@@ -183,6 +183,10 @@ static inline int _zstr(const char *s)
 #define AGC_STATUS_IS_BREAK(x) (x == AGC_STATUS_BREAK || x == 730035 || x == 35 || x == AGC_STATUS_INTR)
 
 
+#define agc_malloc(ptr, len) (void)(assert(((ptr) = malloc((len)))),ptr)
+#define agc_zmalloc(ptr, len) (void)(assert((ptr = calloc(1, (len)))),ptr)
+#define agc_strdup(ptr, s) (void)(assert(((ptr) = strdup((s)))),ptr)
+
 AGC_DECLARE(const char *) agc_cut_path(const char *in);
 AGC_DECLARE(agc_bool_t) agc_is_number(const char *str);
 AGC_DECLARE(unsigned int) agc_atoui(const char *nptr);

@@ -5,10 +5,16 @@ LIBDIR=${BASEDIR}/libs;
 BUILD_DESC="           to build AGC from source."
 
 format_file() {
+  find . -name "buildconf" | xargs dos2unix
+  find . -name "buildconf" | xargs chmod +x
+
   find . -name "*.py" | xargs dos2unix
   find . -name "*.py" | xargs chmod +x
   find . -name "*.sh" | xargs dos2unix
   find . -name "*.sh" | xargs chmod +x
+
+  dos2unix ${LIBDIR}/apr/build/PrintPath
+  chmod +x ${LIBDIR}/apr/build/PrintPath
 }
 
 setup_gnu() {

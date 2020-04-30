@@ -1,3 +1,4 @@
 modules:
     - name    : mod_logfile
     - name    : mod_epoll
+    - name    : mod_eventsocket

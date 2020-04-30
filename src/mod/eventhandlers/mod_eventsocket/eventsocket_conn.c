@@ -4,58 +4,58 @@ static void *api_exec(agc_thread_t *thread, void *obj);
 
 agc_status_t read_packet(event_connect_t *conn, agc_event_t **event)
 {
-    agc_size_t mlen, bytes = 0;
-    agc_size_t len, hlen;
-    char *mbuf = NULL;
-    char *ptr;
-    void *pop;
-    agc_status_t status = AGC_STATUS_SUCCESS;
-    uint32_t buf_len = 0;
-    int count = 0;
-    int clen = 0;
-    uint8_t crcount = 0;
+	agc_size_t mlen, bytes = 0;
+	agc_size_t len, hlen;
+	char *mbuf = NULL;
+	char *ptr;
+	void *pop;
+	agc_status_t status = AGC_STATUS_SUCCESS;
+	uint32_t buf_len = 0;
+	int count = 0;
+	int clen = 0;
+	uint8_t crcount = 0;
     
-    *event = NULL;
+	*event = NULL;
     
-    if (profile.done) {
-        return AGC_STATUS_FALSE;
-    }
+	if (profile.done) {
+		return AGC_STATUS_FALSE;
+	}
     
-    agc_zmalloc(mbuf, EVTSKT_BLOCK_LEN);
-    assert(mbuf);
-    buf_len = EVTSKT_BLOCK_LEN;
-    ptr = mbuf;
+	agc_zmalloc(mbuf, EVTSKT_BLOCK_LEN);
+	assert(mbuf);
+	buf_len = EVTSKT_BLOCK_LEN;
+	ptr = mbuf;
     
-    while (conn->sock && !profile.done) {
-        uint8_t do_sleep = 1;
+	while (conn->sock && !profile.done) {
+		uint8_t do_sleep = 1;
 		mlen = 1;
         
-        if (bytes == buf_len - 1) {
-            char *tmp;
-            int pos;
+		if (bytes == buf_len - 1) {
+			char *tmp;
+			int pos;
             
-            pos = (int)(ptr - mbuf);
-            buf_len += EVTSKT_BLOCK_LEN;
-            tmp = realloc(mbuf, buf_len);
-            assert(tmp);
-            mbuf = tmp;
-            memset(mbuf + bytes, 0, buf_len - bytes);
-            ptr = (mbuf + pos);
-        }
+			pos = (int)(ptr - mbuf);
+			buf_len += EVTSKT_BLOCK_LEN;
+			tmp = realloc(mbuf, buf_len);
+			assert(tmp);
+			mbuf = tmp;
+			memset(mbuf + bytes, 0, buf_len - bytes);
+			ptr = (mbuf + pos);
+		}
         
-        status = agc_socket_recv(conn->sock, ptr, &mlen);
+		status = agc_socket_recv(conn->sock, ptr, &mlen);
         
-        if (profile.done || (!AGC_STATUS_IS_BREAK(status) && status != AGC_STATUS_SUCCESS)) {
-            agc_safe_free(mbuf);
+		if (profile.done || (!AGC_STATUS_IS_BREAK(status) && status != AGC_STATUS_SUCCESS)) {
+			agc_safe_free(mbuf);
 			return AGC_STATUS_FALSE;
 		}
         
-        if (mlen) {
-            bytes += mlen;
-            do_sleep = 0;
+		if (mlen) {
+			bytes += mlen;
+			do_sleep = 0;
             
-            if (*mbuf == '\r' || *mbuf == '\n') {	
-                ptr = mbuf;
+			if (*mbuf == '\r' || *mbuf == '\n') {	
+				ptr = mbuf;
 				mbuf[0] = '\0';
 				bytes = 0;
 				continue;
@@ -103,26 +103,26 @@ agc_status_t read_packet(event_connect_t *conn, agc_event_t **event)
 									clen = atoi(val);
 
 									if (clen > 0) {
-                                        char *body;
-                                        char *p;
+										char *body;
+										char *p;
                                         
-                                        agc_zmalloc(body, clen + 1);
+										agc_zmalloc(body, clen + 1);
                                         
-                                        p = body;
+										p = body;
                                         
 										while (clen > 0) {
-                                            mlen = clen;
-                                            status = agc_socket_recv(conn->sock, p, &mlen);
+											mlen = clen;
+											status = agc_socket_recv(conn->sock, p, &mlen);
 
 											if (profile.done || (!AGC_STATUS_IS_BREAK(status) && status != AGC_STATUS_SUCCESS)){
-                                                free(body);
-                                                agc_safe_free(mbuf);  
-                                                return AGC_STATUS_FALSE;
-                                            }
+ 												free(body);
+												agc_safe_free(mbuf);  
+												return AGC_STATUS_FALSE;
+											}
                                             
-                                            clen -= (int) mlen;
-                                            p += mlen;
-                                        }
+											clen -= (int) mlen;
+											p += mlen;
+										}
 
 										agc_event_add_body(*event, "%s", body);
 										free(body);
@@ -137,7 +137,7 @@ agc_status_t read_packet(event_connect_t *conn, agc_event_t **event)
                 
 				break;
 			}
-        }
+		}
         
         if (!*mbuf) {
             if (conn->has_event) {
@@ -178,97 +178,97 @@ agc_status_t read_packet(event_connect_t *conn, agc_event_t **event)
 
 agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *reply, uint32_t reply_len)
 {
-    agc_status_t status = AGC_STATUS_SUCCESS;
+	agc_status_t status = AGC_STATUS_SUCCESS;
 	char *cmd = NULL;
-    agc_event_t *pevent = *event;
+	agc_event_t *pevent = *event;
     
-    *reply = '\0';
+	*reply = '\0';
     
-    if (!event || !pevent || !(cmd = agc_event_get_header(pevent, "command"))) {
-        conn->is_running = 0;
+	if (!event || !pevent || !(cmd = agc_event_get_header(pevent, "command"))) {
+		conn->is_running = 0;
 		agc_snprintf(reply, reply_len, "-ERR command parse error.");
 		return status;
 	}
     
-    if (!strncasecmp(cmd, "exit", 4) || !strncasecmp(cmd, "...", 3)) {
+	if (!strncasecmp(cmd, "exit", 4) || !strncasecmp(cmd, "...", 3)) {
 		conn->is_running = 0;
 		agc_snprintf(reply, reply_len, "+OK bye");
 		return status;
 	}
     
-    if (!strncasecmp(cmd, "api ", 4)) {
-        api_command_t acs = {0};
-        char *console_execute = agc_event_get_header(pevent, "console_execute");
+	if (!strncasecmp(cmd, "api ", 4)) {
+		api_command_t acs = {0};
+		char *console_execute = agc_event_get_header(pevent, "console_execute");
         
-        char *api_cmd = cmd + 4;
+		char *api_cmd = cmd + 4;
 		char *arg = NULL;
 		strip_cr(api_cmd);
         
-        if (!(acs.console_execute = agc_true(console_execute))) {
+		if (!(acs.console_execute = agc_true(console_execute))) {
 			if ((arg = strchr(api_cmd, ' '))) {
 				*arg++ = '\0';
 			}
 		}
         
-        acs.conn = conn;
+		acs.conn = conn;
 		acs.api_cmd = api_cmd;
 		acs.arg = arg;
 		acs.bg = 0;
         
-        api_exec(NULL, (void *)&acs);
+		api_exec(NULL, (void *)&acs);
         
-        status = AGC_STATUS_SUCCESS;
+		status = AGC_STATUS_SUCCESS;
         
-        if (event) {
-            agc_event_destroy(event);
-        }   
-    } else if (!strncasecmp(cmd, "event", 5)) {
-        char *next, *cur;
-        uint32_t count = 0, key_count = 0;
+		if (event) {
+			agc_event_destroy(event);
+		}   
+	} else if (!strncasecmp(cmd, "event", 5)) {
+		char *next, *cur;
+		uint32_t count = 0, key_count = 0;
 		uint8_t custom = 0;
-        uint32_t x = 0;
+		uint32_t x = 0;
         
-        //re subscribed clear current
+		//re subscribed clear current
 		for (x = 0; x < EVENT_ID_LIMIT; x++) {
 			conn->event_list[x] = 0;
 		}
         
-        strip_cr(cmd);
+		strip_cr(cmd);
 		cur = cmd + 5;
         
-        if (cur && (cur = strchr(cur, ' '))) {
-            for (cur++; cur; count++) {
-                int event_id;
+		if (cur && (cur = strchr(cur, ' '))) {
+			for (cur++; cur; count++) {
+				int event_id;
                 
-                if ((next = strchr(cur, ' '))) {
+				if ((next = strchr(cur, ' '))) {
 					*next++ = '\0';
 				}
                 
-                if (agc_event_get_id(cur, &event_id) == AGC_STATUS_SUCCESS) {
-                    key_count++;
-                    if (event_id == EVENT_ID_ALL) {
+				if (agc_event_get_id(cur, &event_id) == AGC_STATUS_SUCCESS) {
+					key_count++;
+					if (event_id == EVENT_ID_ALL) {
 						for (x = 0; x < EVENT_ID_LIMIT; x++) {
 							conn->event_list[x] = 1;
 						}
-                    } else {
-                        conn->event_list[event_id] = 1;
-                    }
-                }
-            }
+					} else {
+						conn->event_list[event_id] = 1;
+					}
+				}
+			}
             
-            cur = next;
-        }
+			cur = next;
+		}
         
-        if (!key_count) {
-            conn->has_event = 0;
+		if (!key_count) {
+			conn->has_event = 0;
 			agc_snprintf(reply, reply_len, "-ERR no keywords supplied");
 			return status;
 		}
         
-        conn->has_event = 1;
-    }
+		conn->has_event = 1;
+	}
     
-    return status; 
+	return status; 
 }
 
 void strip_cr(char *s)
@@ -281,39 +281,41 @@ void strip_cr(char *s)
 
 static void *api_exec(agc_thread_t *thread, void *obj)
 {
-    api_command_t *acs = (api_command_t *)obj;
-    agc_stream_handle_t stream = { 0 };
-    char *reply, *freply = NULL;
+	api_command_t *acs = (api_command_t *)obj;
+	agc_stream_handle_t stream = { 0 };
+	char *reply, *freply = NULL;
 	agc_status_t status;
     
-    if (thread) {
-        agc_mutex_lock(profile.mutex);
-	    profile.threads++;
-        agc_mutex_unlock(profile.mutex);
-    }
+	if (thread) {
+		agc_mutex_lock(profile.mutex);
+		profile.threads++;
+		agc_mutex_unlock(profile.mutex);
+	}
     
-    if (!acs) {
-        agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Internal error.\n");
+	if (!acs) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Internal error.\n");
 		return NULL;
 	}
     
-    if (!acs->conn || !acs->conn->is_running ||
+	if (!acs->conn || !acs->conn->is_running ||
 		!acs->conn->rwlock || agc_thread_rwlock_tryrdlock(acs->conn->rwlock) != AGC_STATUS_SUCCESS) {
-        agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Error! cannot get read lock.\n");
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Error! cannot get read lock.\n");
 		acs->ack = -1;
 		return NULL;
 	}
     
-    acs->ack = 1;
-    agc_api_stand_stream(&stream);
+	acs->ack = 1;
+	agc_api_stand_stream(&stream);
     
-    if (acs->console_execute) {
+	/*if (acs->console_execute) {
         //TODO
-    } else {
-        status = agc_api_execute(acs->api_cmd, acs->arg, &stream);
-    }
+	} else {
+		status = agc_api_execute(acs->api_cmd, acs->arg, &stream);
+	}*/
+
+	status = agc_api_execute(acs->api_cmd, acs->arg, &stream);
     
-    if (status == AGC_STATUS_SUCCESS) {
+	if (status == AGC_STATUS_SUCCESS) {
 		reply = stream.data;
 	} else {
 		freply = agc_mprintf("-ERR %s Command not found!\n", acs->api_cmd);
@@ -324,10 +326,10 @@ static void *api_exec(agc_thread_t *thread, void *obj)
 		reply = "Command returned no output!";
 	}
     
-    if (acs->bg) {
-        //TODO
-    } else {
-        agc_size_t rlen, blen;
+	if (acs->bg) {
+		//TODO
+	} else {
+		agc_size_t rlen, blen;
 		char buf[1024] = "";
 
 		if (!(rlen = strlen(reply))) {
@@ -339,20 +341,20 @@ static void *api_exec(agc_thread_t *thread, void *obj)
 		blen = strlen(buf);
 		agc_socket_send(acs->conn->sock, buf, &blen);
 		agc_socket_send(acs->conn->sock, reply, &rlen);
-    }
+	}
     
-    agc_safe_free(stream.data);
+	agc_safe_free(stream.data);
 	agc_safe_free(freply);
     
-    if (acs->conn->rwlock) {
+	if (acs->conn->rwlock) {
 		agc_thread_rwlock_unlock(acs->conn->rwlock);
 	}
     
-    if (thread) {
-        agc_mutex_lock(profile.mutex);
-	    profile.threads--;
-        agc_mutex_unlock(profile.mutex);
-    }
+	if (thread) {
+		agc_mutex_lock(profile.mutex);
+		profile.threads--;
+		agc_mutex_unlock(profile.mutex);
+	}
     
     return NULL;
 }

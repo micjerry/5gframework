@@ -7,8 +7,8 @@ struct agc_loadable_module {
 	char *key;
 	char *filename;
 	int perm;
-    agc_loadable_module_interface_t *module_interface;
-    agc_dso_lib_t lib;
+	agc_loadable_module_interface_t *module_interface;
+	agc_dso_lib_t lib;
 	agc_module_load_func load_func;
 	agc_module_runtime_func runtime_func;
 	agc_module_shutdown_func shutdown_func;
@@ -19,7 +19,7 @@ struct agc_loadable_module {
 };
 
 struct agc_loadable_module_container {
-    char *cfgfile_path;
+	char *cfgfile_path;
 	agc_hash_t *module_hash;
 	agc_mutex_t *mutex;
 	agc_memory_pool_t *pool;

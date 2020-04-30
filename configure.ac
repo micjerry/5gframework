@@ -104,6 +104,32 @@ AC_DEFINE_UNQUOTED([AGC_DATA_DIR],"${datadir}",[directory for data files])
 
 AC_DEFINE_UNQUOTED([AGC_PREFIX_DIR],"${prefix}",[directory for base])
 
+AC_ARG_ENABLE(core-libedit-support,     
+  [AS_HELP_STRING([--disable-core-libedit-support], [Compile without libedit Support])])
+
+AS_IF([test "x$enable_core_libedit_support" != "xno"],[
+  PKG_CHECK_MODULES([LIBEDIT], [libedit >= 2.11],,[
+    AC_MSG_RESULT([no])
+    AC_CHECK_LIB([edit], [el_line], [LIBEDIT_LIBS=-ledit])
+    AC_CHECK_HEADER([histedit.h], [], [unset LIBEDIT_LIBS])
+    AS_IF([test "x$LIBEDIT_LIBS" = "x"], [
+      AC_MSG_ERROR([You need to either install libedit-dev (>= 2.11) or configure with --disable-core-libedit-support])
+      ])])])
+      
+AS_IF([test "x$enable_core_libedit_support" != "xno"], [
+  # If making changes here, don't forget to run autoheader and
+  # update libs/esl/src/include/esl_config_auto.h.in manually.
+  AC_DEFINE([HAVE_LIBEDIT], [1], [Define to 1 if you have libedit is available])
+  save_LIBS="${LIBS}"
+  save_CPPFLAGS="${CPPFLAGS}"
+  LIBS="${LIBEDIT_LIBS}"
+  CPPFLAGS="${LIBEDIT_CFLAGS}"
+  AC_CHECK_DECLS([EL_PROMPT_ESC, EL_REFRESH],,, [[#include <histedit.h>]])
+  AC_CHECK_FUNCS([el_wset])
+  LIBS="${save_LIBS}"
+  CPPFLAGS="${save_CPPFLAGS}"
+])
+
 #######################################
 ####           functions           ####
 #######################################
@@ -364,6 +390,8 @@ if test "$use_system_aprutil" != "yes"; then
    ac_configure_args="$ac_configure_args --with-apr=../apr" 
    AC_CONFIG_SUBDIRS([libs/apr-util])
 fi
+
+AC_CONFIG_HEADER([libs/esl/src/include/esl_config_auto.h])
 
 AC_CONFIG_FILES([src/include/agc_version.h])
 AC_CONFIG_FILES([src/include/agc_am_config.h])

@@ -116,8 +116,20 @@ libagc_la_DEPENDENCIES = $(BUILT_SOURCES)
 ##
 ## Applications
 ##
-bin_PROGRAMS = agc
+bin_PROGRAMS = agc agc_cli
 
+
+##
+## agc_cli
+##
+agc_cli_SOURCES = libs/esl/src/esl.c libs/esl/src/esl_config.c libs/esl/src/esl_event.c \
+	libs/esl/src/esl_threadmutex.c libs/esl/agc_cli.c libs/esl/src/esl_json.c libs/esl/src/esl_buffer.c
+agc_cli_CFLAGS  = $(AM_CFLAGS) -I$(agc_srcdir)/libs/esl/src/include $(LIBEDIT_CFLAGS)
+agc_cli_LDFLAGS = $(AM_LDFLAGS) -lpthread -lm $(LIBEDIT_LIBS)
+
+##
+## agc
+##
 nodist_agc_SOURCES = src/include/agc_version.h
 agc_SOURCES = src/agc.c
 agc_CFLAGS  = $(AM_CFLAGS) $(CORE_CFLAGS)

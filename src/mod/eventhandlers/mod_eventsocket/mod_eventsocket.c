@@ -77,7 +77,7 @@ AGC_MODULE_SHUTDOWN_FUNCTION(mod_eventsocket_shutdown)
     
     while (profile.threads) {
 		agc_yield(100000);
-		kill_all_listeners();
+		kill_connections();
 		if (++wait >= 200) {
 			break;
 		}
@@ -95,7 +95,7 @@ AGC_MODULE_RUNTIME_FUNCTION(mod_eventsocket_runtime)
     event_connect_t *new_connection;
     
     while (!profile.done) {
-        if (agc_core_new_memory_pool(&pool) != AGC_STATUS_SUCCESS) {
+        if (agc_memory_create_pool(&pool) != AGC_STATUS_SUCCESS) {
             agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Memory alloc failed\n");
             profile.done = 1;
             break;
@@ -141,7 +141,7 @@ AGC_MODULE_RUNTIME_FUNCTION(mod_eventsocket_runtime)
     listener.ready = 1;
     
     while (!profile.done) {
-        if (agc_core_new_memory_pool(&connection_pool) != AGC_STATUS_SUCCESS) {
+        if (agc_memory_create_pool(&connection_pool) != AGC_STATUS_SUCCESS) {
             agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Memory alloc failed\n");
             profile.done = 1;
             break;
@@ -288,7 +288,7 @@ static void release_connection(event_connect_t **conn)
 
 static void launch_connection_thread(event_connect_t *conn)
 {
-    agc_thread_t *thread;
+	agc_thread_t *thread;
 	agc_threadattr_t *thd_attr = NULL;
 
 	agc_threadattr_create(&thd_attr, conn->pool);
@@ -299,29 +299,29 @@ static void launch_connection_thread(event_connect_t *conn)
 
 static void *connection_run(agc_thread_t *thread, void *obj)
 {
-    char buf[1024];
-    char reply[512] = "";
-    agc_size_t len;
-    event_connect_t *conn = (event_connect_t *)obj;
-    agc_event_t *revent = NULL;
+	char buf[1024];
+	char reply[512] = "";
+	agc_size_t len;
+	event_connect_t *conn = (event_connect_t *)obj;
+	agc_event_t *revent = NULL;
     
-    assert(conn != NULL);
+	assert(conn != NULL);
     
-    agc_mutex_lock(profile.mutex);
+	agc_mutex_lock(profile.mutex);
 	profile.threads++;
-    agc_mutex_unlock(profile.mutex);
+	agc_mutex_unlock(profile.mutex);
     
-    agc_socket_opt_set(conn->sock, AGC_SO_TCP_NODELAY, TRUE);
+	agc_socket_opt_set(conn->sock, AGC_SO_TCP_NODELAY, TRUE);
 	agc_socket_opt_set(conn->sock, AGC_SO_NONBLOCK, TRUE);
     
-    conn->is_running = 1;
-    add_conn(conn);
+	conn->is_running = 1;
+	add_conn(conn);
     
-    while (!profile.done && listener.ready && conn->is_running) {
-        len = sizeof(buf);
-        memset(buf, 0, len);
+	while (!profile.done && listener.ready && conn->is_running) {
+		len = sizeof(buf);
+		memset(buf, 0, len);
         
-        if (read_packet(conn, &revent) != AGC_STATUS_SUCCESS) {
+		if (read_packet(conn, &revent) != AGC_STATUS_SUCCESS) {
 			break;
 		}
 
@@ -329,17 +329,18 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 			continue;
 		}
         
-        if (parse_command(conn, &revent, reply, sizeof(reply)) != AGC_STATUS_SUCCESS ) {
-            conn->is_running = 0;
-            break;
-        }
-        
-        if (revent) {
+		if (parse_command(conn, &revent, reply, sizeof(reply)) != AGC_STATUS_SUCCESS ) {
+			conn->is_running = 0;
+			break;
+		}
+	        
+		if (revent) {
 			agc_event_destroy(&revent);
 		}
-        //TODO
+		
+		//TODO
         
-        if (*reply != '\0') {
+		if (*reply != '\0') {
 			if (*reply == '~') {
 				agc_snprintf(buf, sizeof(buf), "Content-Type: command/reply\n%s", reply + 1);
 			} else {
@@ -347,32 +348,32 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 			}
 			len = strlen(buf);
 			agc_socket_send(conn->sock, buf, &len);
-		}
-    }
-    
-    if (revent) {
-        agc_event_destroy(&revent);
+		} 
 	}
     
-    send_disconnect(conn, "Disconnected, goodbye.\n");
-    remove_conn(conn);
-    close_socket(&conn->sock);
+	if (revent) {
+		agc_event_destroy(&revent);
+	}
     
-    release_connection(&conn);
+	send_disconnect(conn, "Disconnected, goodbye.\n");
+	remove_conn(conn);
+	close_socket(&conn->sock);
     
-    agc_mutex_lock(profile.mutex);
+	release_connection(&conn);
+    
+	agc_mutex_lock(profile.mutex);
 	profile.threads--;
-    agc_mutex_unlock(profile.mutex);
+	agc_mutex_unlock(profile.mutex);
     
-    return NULL;
+	return NULL;
 }
 
 static void add_conn(event_connect_t *conn)
 {
-    agc_mutex_lock(listener.sock_mutex);
-    conn->next = listener.connections;
-    listener.connections = conn;
-    agc_mutex_unlock(listener.sock_mutex);
+	agc_mutex_lock(listener.sock_mutex);
+	conn->next = listener.connections;
+	listener.connections = conn;
+	agc_mutex_unlock(listener.sock_mutex);
 }
 
 static void remove_conn(event_connect_t *conn)
