@@ -82,6 +82,7 @@ library_include_HEADERS = \
 	src/include/agc_driver.h \
 	src/include/agc_connection.h \
 	src/include/agc_api.h \
+	src/include/agc_cache.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -105,6 +106,7 @@ libagc_la_SOURCES = \
 	src/agc_connection.c \
 	src/agc_driver.c \
 	src/agc_api.c \
+	src/agc_cache.c \
 	$(NULL)
 
 $(libagc_la_SOURCES): $(CORE_LIBS) $(agc_builddir)/modules.conf  

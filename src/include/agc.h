@@ -38,5 +38,6 @@
 #include "agc_driver.h"
 #include "agc_connection.h"
 #include "agc_api.h"
+#include "agc_cache.h"
 
 #endif

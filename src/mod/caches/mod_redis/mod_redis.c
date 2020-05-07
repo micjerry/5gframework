@@ -9,6 +9,7 @@ AGC_MODULE_DEFINITION(mod_redis, mod_redis_load, mod_redis_shutdown, NULL);
 #define MAX_ADDRS_LEN 512
 #define MIN_POOL_CONNECTIONS 2
 #define MAX_POOL_CONNECTIONS 32
+#define MAX_POOL_RETRIES 5
 
 static agc_memory_pool_t *module_pool = NULL;
 static char *redis_addrs = NULL;
@@ -44,10 +45,6 @@ static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys
 
 static agc_status_t agc_cache_redis_hashdel(const char *tablename,  keys_t *keys);
 
-static agc_status_t agc_cache_redis_hashkeys(const char *tablename, keys_t **keys);
-
-static agc_status_t agc_cache_redis_hashgetall(const char *tablename, keyvalues_t **keyvalues);
-
 static agc_cache_actions_t agc_cache_routine = {
     agc_cache_redis_set,
     agc_cache_redis_get,
@@ -62,9 +59,7 @@ static agc_cache_actions_t agc_cache_routine = {
     agc_cache_redis_hashget,
     agc_cache_redis_hashmset,
     agc_cache_redis_hashmget,
-    agc_cache_redis_hashdel,
-    agc_cache_redis_hashkeys,
-    agc_cache_redis_hashgetall
+    agc_cache_redis_hashdel
 };
 
 typedef struct agc_redis_connection_s agc_redis_connection_t;
@@ -83,19 +78,15 @@ static agc_status_t initial_connection_pool();
 
 static void destroy_connection_pool();
 
-static agc_status_t add_connection(agc_bool_t check);
+static agc_status_t create_connection();
 
 static agc_redis_connection_t *get_connection();
 
-static void free_connection(agc_redis_connection_t *connection, redisReply *reply);
-
-static agc_status_t decodeResult(redisReply *reply);
+static void free_connection(agc_redis_connection_t *connection);
 
 static agc_bool_t check_connection(agc_redis_connection_t *connection);
 
 static agc_time_t next_connect_time();
-
-static agc_bool_t is_connection_break(redisReply *reply);
 
 static void create_context(agc_redis_connection_t *connection);
 static void release_context(agc_redis_connection_t *connection);
@@ -103,20 +94,33 @@ static void release_context(agc_redis_connection_t *connection);
 static void get_strvalue(redisReply *reply, char **result);
 static void get_intvalue(redisReply *reply, int *result);
 
+static agc_status_t agc_redis_multireplies(agc_redis_connection_t *connection, int replies);
+static redisReply *agc_redis_hashargv(agc_redis_connection_t *connection, const char *cmd, const char *tablename, keys_t *keys, keyvalues_t *keyvalues)
+	
 AGC_MODULE_LOAD_FUNCTION(mod_redis_load)
 {
 	module_pool = pool;
-	load_configuration();
+	if (load_configuration() !=  AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Redis load configuration failed.\n");
+		return AGC_STATUS_GENERR;
+	}
 	
 	SYSTEM_RUNNING = 1;
+	
+	initial_connection_pool();
+	agc_cache_register_impl(&agc_cache_routine);
+	
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Redis init success.\n");
 	return AGC_STATUS_SUCCESS;
 }
 
 AGC_MODULE_SHUTDOWN_FUNCTION(mod_redis_shutdown)
 {
+	agc_redis_connection_t *connection = NULL;
+	
 	SYSTEM_RUNNING = 0;
 
+	destroy_connection_pool();
 	
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Redis shutdown success.\n");
 	return AGC_STATUS_SUCCESS;
@@ -127,12 +131,10 @@ static agc_status_t agc_cache_redis_set(const char *key, const char *value, int 
 	agc_redis_connection_t *connection = NULL;
 	redisReply *reply;
 	agc_status_t status =  AGC_STATUS_GENERR;
-	int failed = 0;
-	int i;
 	int cmds = 1;
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	redisClusterAppendCommand(connection->cc, "SET %s %s",  key, value);
@@ -142,23 +144,11 @@ static agc_status_t agc_cache_redis_set(const char *key, const char *value, int 
 		redisClusterAppendCommand(connection->cc, "EXPIRE %s %d", key, expires);
 	}
 
-	for (i =0; i < cmds; i++) {
-		redisClusterGetReply(connection->cc, &reply);
-
-		if (is_connection_break(reply)) { // connection error, skip
-			failed++;
-			release_context(connection);
-			break;
-		}
-
-		if (decodeResult(reply) != AGC_STATUS_SUCCESS)
-			failed++;
+	status = agc_redis_multireplies(connection, cmds);
 	
-	}
+	free_connection(connection);
 	
-	free_connection(connection, NULL);
-	
-	return failed ? AGC_STATUS_GENERR : AGC_STATUS_SUCCESS;
+	return status;
 }
 
 static agc_status_t agc_cache_redis_get(const char *key, char **result, int *len)
@@ -166,24 +156,27 @@ static agc_status_t agc_cache_redis_get(const char *key, char **result, int *len
 	agc_redis_connection_t *connection = NULL;
 	redisReply *reply;
 	char *result_ptr = NULL;
+	agc_status_t status =  AGC_STATUS_GENERR;
 
 	if (!result || !len) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	reply = redisClusterCommand(connection->cc, "GET %s", key);
-	free_connection(connection, reply);
+	free_connection(connection);
 
-	if (!reply)
-		return AGC_STATUS_GENERR;
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
+		get_strvalue(reply, result, len);
+	}
 
-	get_strvalue(reply, result, len);
+	freeReplyObject(reply);
 	
-	return decodeResult(reply);
+	return status;
 
 }
 
@@ -192,51 +185,46 @@ static agc_status_t agc_cache_redis_delete(const char *key)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
+	agc_status_t status =  AGC_STATUS_GENERR;
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	reply = redisClusterCommand(connection->cc, "DEL %s", key);
-	free_connection(connection, reply);
+	free_connection(connection);
 
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
+	}
+
+	freeReplyObject(reply);
 	
-	return decodeResult(reply);
+	return status;
 }
 
 static agc_status_t agc_cache_redis_set_pipeline(keyvalues_t *keyvalues)
 {
 	agc_redis_connection_t *connection  = NULL;
+	agc_status_t status =  AGC_STATUS_GENERR;
 	redisReply *reply;
-	keyvalues_t *l_keyvalue;
-	int failed = 0;
+	keyvalues_t *iter;
+	int cmds = 0;
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
-	for (l_keyvalue = keyvalues; l_keyvalue; l_keyvalue = l_keyvalue->next) {
-		redisClusterAppendCommand(connection->cc, "SET %s %s", l_keyvalue->key, l_keyvalue->value);
+	for (iter = keyvalues; iter; iter = iter->next) {
+		cmds++;
+		redisClusterAppendCommand(connection->cc, "SET %s %s", iter->key, iter->value);
 	}
 
-	for (l_keyvalue = keyvalues; l_keyvalue; l_keyvalue = l_keyvalue->next) {
-		redisClusterGetReply(connection->cc, &reply);
-		if (is_connection_break(reply)) { // connection error, skip
-			failed++;
-			release_context(connection);
-			break;
-		}
-			
-		if (decodeResult(reply) != AGC_STATUS_SUCCESS)
-			failed++;
-	}
+	status = agc_redis_multireplies(connection, cmds);
 
-	if (connection->cc)
-		redisClusterReset(connection->cc);
+	free_connection(connection);
 
-	free_connection(connection, NULL);
-
-	return failed ? AGC_STATUS_GENERR : AGC_STATUS_SUCCESS;
+	return status;
 	
 }
 
@@ -244,53 +232,58 @@ static agc_status_t agc_cache_redis_get_pipeline(keys_t *keys, keyvalues_t **key
 {	
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
-	keys_t *l_key;
+	keys_t *iter;
 	keyvalues_t *header = NULL;
-	keyvalues_t *l_keyvalue = NULL;
+	keyvalues_t *new_keyvalue = NULL;
 	keyvalues_t *tail= NULL;
-	int failed = 0;
+	agc_status_t status = AGC_STATUS_SUCCESS;
+
+	if (!keys || !keyvalues) 
+		return AGC_STATUS_GENERR;
 
 	if (!(connection = get_connection())) {
 		return AGC_STATUS_GENERR;
 	}
 
-	for (l_key = keys; l_key; l_key = l_key->next)  {
-		redisClusterAppendCommand(connection->cc, "GET %s", l_key->key);
+	for (iter = keys; iter; iter = iter->next)  {
+		redisClusterAppendCommand(connection->cc, "GET %s", iter->key);
 	}
 
-	for (l_key = keys; l_key; l_key = l_key->next) {
+	for (iter = keys; iter; iter = iter->next) {
 		redisClusterGetReply(connection->cc, &reply);
-		if (is_connection_break(reply)) { // connection error, skip
-			failed++;
-			release_context(connection);
+		if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
+			status = AGC_STATUS_GENERR;
+			freeReplyObject(reply);
 			break;
 		}
 		
-		l_keyvalue = malloc(sizeof(keyvalues_t));
-		memset(l_keyvalue, 0, sizeof(keyvalues_t));
+		new_keyvalue = malloc(sizeof(keyvalues_t));
+		memset(new_keyvalue, 0, sizeof(keyvalues_t));
 		if (!header) {
-			header = l_keyvalue;
+			header = new_keyvalue;
 		} 
 
 		if (tail) {
-			tail->next = l_keyvalue;
+			tail->next = new_keyvalue;
 		}
 
-		tail = l_keyvalue;
+		tail = new_keyvalue;
 
-		l_keyvalue->key = strdup(l_key->key);
-		get_strvalue(reply, &l_keyvalue->value, l_keyvalue->value_len);
+		new_keyvalue->key = strdup(iter->key);
+		get_strvalue(reply, &new_keyvalue->value, &new_keyvalue->value_len);
+		
+		freeReplyObject(reply);
 			
 	}
 
 	if (connection->cc)
 		redisClusterReset(connection->cc);
 
-	free_connection(connection, NULL);
+	free_connection(connection);
 
 	*keyvalues = header;
 
-	return failed ? AGC_STATUS_GENERR : AGC_STATUS_SUCCESS;
+	return status;
 	
 }
 
@@ -298,54 +291,52 @@ static agc_status_t agc_cache_redis_delete_pipeline(keys_t *keys)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
-	keys_t *l_key;
-	int failed = 0;
+	keys_t *iter;
+	int cmds = 0;
+
+	if (!keys)
+		return  AGC_STATUS_GENERR;
 
 	if (!(connection = get_connection())) {
 		return AGC_STATUS_GENERR;
 	}
 
-	for (l_key = keys; l_key; l_key = l_key->next)  {
-		redisClusterAppendCommand(connection->cc, "DEL %s", l_key->key);
+	for (iter = keys; iter; iter = iter->next)  {
+		cmds++;
+		redisClusterAppendCommand(connection->cc, "DEL %s", iter->key);
 	}
 
-	for (l_key = keys; l_key; l_key = l_key->next) {
-		redisClusterGetReply(connection->cc, &reply);
-		if (is_connection_break(reply)) { // connection error, skip
-			failed++;
-			release_context(connection);
-			break;
-		}
+	status = agc_redis_multireplies(connection, cmds);
 
-		if (decodeResult(reply) != AGC_STATUS_SUCCESS)
-			failed++;
-	}
+	free_connection(connection);
 
-	if (connection->cc)
-		redisClusterReset(connection->cc);
-
-	free_connection(connection, NULL);
-
-	return failed ? AGC_STATUS_GENERR : AGC_STATUS_SUCCESS;
+	return status;
 }
 
 static agc_status_t agc_cache_redis_expire(const char *key, int expires)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!key || (expires <=0 )) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	reply = redisClusterCommand(connection->cc, "EXPIRE %s %d", key, expires);
-	free_connection(connection, reply);
+	free_connection(connection);
+
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
+	}
+
+	freeReplyObject(reply);
 	
-	return decodeResult(reply);
+	return status;
 	
 }
 
@@ -353,59 +344,81 @@ static agc_status_t agc_cache_redis_incr(const char *key, int *value)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!key) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 		
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	reply = redisClusterCommand(connection->cc, "INCR %s", key);
-	get_intvalue(reply, value);
 
-	return decodeResult(reply);
+	free_connection(connection);
+
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
+		get_intvalue(reply, value);
+	}
+
+	freeReplyObject(reply);
+	
+	return status;
 }
 
 static agc_status_t agc_cache_redis_decr(const char *key, int *value)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!key) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 		
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	reply = redisClusterCommand(connection->cc, "DECR %s", key);
-	get_intvalue(reply, value);
 
-	return decodeResult(reply);
+	free_connection(connection);
+
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
+		get_intvalue(reply, value);
+	}
+
+	freeReplyObject(reply);
+	
+	return status;
 }
 
 static agc_status_t agc_cache_redis_hashset(const char *tablename, const char *key, const char *value)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
-	int failed = 0;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!tablename || !key || !value) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	reply = redisClusterCommand(connection->cc, "HSET %s %s %s", tablename, key, value);
 
-	free_connection(connection, reply);
+	free_connection(connection);
 
-	return decodeResult(reply);
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
+	}
+
+	freeReplyObject(reply);
 	
 }
 
@@ -413,88 +426,55 @@ static agc_status_t agc_cache_redis_hashget(const char *tablename, const char *k
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
-	int failed = 0;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!tablename || !key || !value || !len) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	reply = redisClusterCommand(connection->cc, "HGET %s %s", tablename, key);
 
-	free_connection(connection, reply);
+	free_connection(connection);
 
-	get_strvalue(reply, value, len);
-	
-	return decodeResult(reply);
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		get_strvalue(reply, value, len);
+		status = AGC_STATUS_SUCCESS;
+	}
+
+	freeReplyObject(reply);
+
+	return status;
 }
 
 static agc_status_t agc_cache_redis_hashmset(const char *tablename, keyvalues_t *keyvalues)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
-	int keyvalue_count = 0;
-	keyvalues_t *iter;
-	int argcount = 0;
-	char **args = NULL;
-	agc_size_t *argvlen = NULL;
-	int i;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!tablename || !keyvalues) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
-	for (iter = keyvalues; iter; iter = iter->next) {
-		keyvalue_count++;
+	reply = agc_redis_hashargv(connection, "HMSET", tablename, NULL, keyvalues); 
+
+	free_connection(connection);
+
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
 	}
 
-	 // command + key + 2 * (number of field/value pairs)
-	argcount = 2 + keyvalue_count*2;
-	args = malloc(argcount * sizeof(char *));
-	argvlen = malloc(argcount * sizeof(agc_size_t));
-
-	args[0] = malloc(strlen("HMSET"));
-    	argvlen[0] = strlen("HMSET");
-    	memcpy(args[0], "HMSET", strlen("HMSET"));
-
-	args[1] = malloc(strlen(tablename));
-	argvlen[1] = strlen(tablename);
-	memcpy(args[1], tablename, strlen(tablename));
-
-	for (i=0, iter = keyvalues; i < keyvalue_count; i++, iter = iter->next) {
-		int argsidx = 2 + (i*2);
-		int key_len = strlen(iter->key);
-		int value_len = strlen(iter->value);
-		
-		args[argsidx] = malloc(key_len * sizeof(char));
-		args[argsidx+1] = malloc(value_len * sizeof(char));
-		memcpy(args[argsidx], iter->key, key_len);
-		memcpy(args[argsidx+1], iter->value, value_len);
-		argvlen[argsidx] = key_len;
-		argvlen[argsidx+1] = value_len;
-		
-	}
-
-	reply = redisClusterCommandArgv(connection->cc, argcount, (const char**)args, argvlen);
-
-	free_connection(connection, reply);
-
-	//free parameters memory
-	for (i=0; i < argcount; i++) {
-		agc_safe_free(args[i]);
-	}
-
-	agc_safe_free(args);
-	agc_safe_free(argvlen);
+	freeReplyObject(reply);
 	
-	return decodeResult(reply);
+	return status;
 	
 }
 
@@ -502,161 +482,91 @@ static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
+	int i;
 	keys_t *iter;
-	int keys_count;
-	char **args = NULL;
-	agc_size_t *argvlen = NULL;
-	int argcount;
 	keyvalues_t *header = NULL;
-	keyvalues_t *l_keyvalue = NULL;
+	keyvalues_t *new_keyvalue = NULL;
 	keyvalues_t *tail= NULL;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!tablename || !keys) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}	
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
+
+	reply = agc_redis_hashargv(connection, "HMGET", tablename, keys, NULL); 
 	
-	for (iter = keys; iter; iter = iter->next) {
-		keys_count++;
-	}
-
-	 // command + key + (number of keys)
-	argcount = 2 + keys_count;
-	args = malloc(argcount * sizeof(char *));
-	argvlen = malloc(argcount * sizeof(agc_size_t));
-
-	args[0] = malloc(strlen("HMGET"));
-    	argvlen[0] = strlen("HMGET");
-    	memcpy(args[0], "HMGET", strlen("HMGET"));
-
-	args[1] = malloc(strlen(tablename));
-	argvlen[1] = strlen(tablename);
-	memcpy(args[1], tablename, strlen(tablename));
-
-	for (i=0, iter = keys; i < keys_count; i++, iter = iter->next) {
-		int argsidx = 2 + i;
-		int key_len = strlen(iter->key);
-
-		args[argsidx] = malloc(key_len * sizeof(char));
-		memcpy(args[argsidx], iter->key, key_len);
-		argvlen[argsidx] = key_len;
-	}
-
-	reply = redisClusterCommandArgv(connection->cc, argcount, (const char**)args, argvlen);
-
-	free_connection(connection, reply);
-
-	//free parameters memory
-	for (i=0; i < argcount; i++) {
-		agc_safe_free(args[i]);
-	}
-
-	agc_safe_free(args);
-	agc_safe_free(argvlen);
+	free_connection(connection);
 
 
-	if ( reply->type == REDIS_REPLY_ERROR || reply->type != REDIS_REPLY_ARRAY) {
+	if (!reply ||  reply->type == REDIS_REPLY_ERROR || reply->type != REDIS_REPLY_ARRAY) {
 		freeReplyObject(reply);
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	for (i = 0; iter = keys; iter; iter = iter->next, i++) {
 		char *value = NULL;
 		int value_len = 0;
-		l_keyvalue = malloc(sizeof(keyvalues_t));
-		memset(l_keyvalue, 0, sizeof(keyvalues_t));
+		new_keyvalue = malloc(sizeof(keyvalues_t));
+		memset(new_keyvalue, 0, sizeof(keyvalues_t));
 
 		if (!header) {
-			header = l_keyvalue;
+			header = new_keyvalue;
 		} 
 
 		if (tail) {
-			tail->next = l_keyvalue;
+			tail->next = new_keyvalue;
 		}
 
-		tail = l_keyvalue;
+		tail = new_keyvalue;
 
-		l_keyvalue->key = strdup(iter->key);
+		new_keyvalue->key = strdup(iter->key);
 
 		value_len = strlen(reply->element[i]->str)
 		value = malloc(value_len));
 		assert(value);
 		strncpy(value, reply->element[i]->str, value_len);
 
-		l_keyvalue->value = value;
-		l_keyvalue->value_len = value_len;	
+		new_keyvalue->value = value;
+		new_keyvalue->value_len = value_len;	
 	}
 
 	*keyvalues = header;
 
-	if (connection->cc)
-		redisClusterReset(connection->cc);
-
 	freeReplyObject(reply);
-	return AGC_STATUS_SUCCESS;
+	status = AGC_STATUS_SUCCESS;
+	
+	return status;
 }
 
 static agc_status_t agc_cache_redis_hashdel(const char *tablename, keys_t *keys)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
-	keys_t *iter;
-	int keys_count;
-	char **args = NULL;
-	agc_size_t *argvlen = NULL;
-	int argcount;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!tablename || !keys) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
-	for (iter = keys; iter; iter = iter->next) {
-		keys_count++;
-	}	
+	reply = agc_redis_hashargv(connection, "HDEL", tablename, keys, NULL); 
 
-	 // command + tablename + (number of keys)
-	argcount = 2 + keys_count;
-	args = malloc(argcount * sizeof(char *));
-	argvlen = malloc(argcount * sizeof(agc_size_t));
+	free_connection(connection);
 
-
-	args[0] = malloc(strlen("HDEL"));
-    	argvlen[0] = strlen("HDEL");
-    	memcpy(args[0], "HDEL", strlen("HDEL"));
-
-	args[1] = malloc(strlen(tablename));
-	argvlen[1] = strlen(tablename);
-	memcpy(args[1], tablename, strlen(tablename));
-
-	for (i=0, iter = keys; i < keys_count; i++, iter = iter->next) {
-		int argsidx = 2 + i;
-		int key_len = strlen(iter->key);
-
-		args[argsidx] = malloc(key_len * sizeof(char));
-		memcpy(args[argsidx], iter->key, key_len);
-		argvlen[argsidx] = key_len;
-	}	
-
-	reply = redisClusterCommandArgv(connection->cc, argcount, (const char**)args, argvlen);
-
-	free_connection(connection, reply);
-
-	//free parameters memory
-	for (i=0; i < argcount; i++) {
-		agc_safe_free(args[i]);
+	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
+		status = AGC_STATUS_SUCCESS;
 	}
 
-	agc_safe_free(args);
-	agc_safe_free(argvlen);
+	freeReplyObject(reply);
 
-	return decodeResult(reply);
+	return status;
 }
 
 static agc_status_t load_configuration()
@@ -762,7 +672,7 @@ static agc_status_t initial_connection_pool()
 	agc_queue_create(&REDIS_CONTEXT_QUEUE, MAX_POOL_CONNECTIONS * 2,  module_pool);
 
 	for (i = 0; i < CONNECTION_POOL_SIZE; i++) {
-		if (add_connection() != AGC_STATUS_SUCCESS) {
+		if (create_connection() != AGC_STATUS_SUCCESS) {
 			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Create redis connection failed %s.\n", redis_addrs);
 			return AGC_STATUS_GENERR;
 		}
@@ -773,30 +683,24 @@ static agc_status_t initial_connection_pool()
 
 static void destroy_connection_pool()
 {
-	redisClusterContext *cc;
+	agc_redis_connection_t *connection = NULL;
 
-	while (1) {
-		void *pop;
-		
-		if (agc_queue_pop(queue, &pop) != AGC_STATUS_SUCCESS) {
-			break;
-		}
-
-		cc = (redisClusterContext *)pop;
-
-		redisClusterFree(cc);
+	while ((connection = get_connection())) {
+		release_context(connection);
 	}
 }
 
-static agc_status_t add_connection()
+static agc_status_t create_connection()
 {
-	redisClusterContext *cc;
+	agc_redis_connection_t *connection = NULL;
 	
 	if ( !SYSTEM_RUNNING)
 		return AGC_STATUS_SUCCESS;
 
 	agc_redis_connection_t *connection = (agc_redis_connection_t *)agc_memory_alloc(module_pool, sizeof(agc_redis_connection_t));
 
+	assert(connection);
+	
 	create_context(connection) ;
 
 	agc_queue_push(REDIS_CONTEXT_QUEUE, connection);
@@ -805,14 +709,20 @@ static agc_status_t add_connection()
 
 static agc_redis_connection_t *get_connection()
 {
-	void *pop;
+	void *pop = NULL;
 	agc_redis_connection_t *connection;
+	int retries = 0;
 	
 	if (!SYSTEM_RUNNING)
 		return NULL;
 
-	if (agc_queue_pop(queue, &pop) != AGC_STATUS_SUCCESS) {
-		agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Can not get connection.\n");
+	while (agc_queue_trypop((queue, &pop) != AGC_STATUS_SUCCESS && (retries < MAX_POOL_RETRIES)) {
+		retries++;
+		agc_yield(10000);
+	}
+
+	if (!pop) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Can not get connection.\n");
 		return NULL;
 	}
 
@@ -826,7 +736,7 @@ static agc_redis_connection_t *get_connection()
 	return connection;
 }
 
-static void free_connection(agc_redis_connection_t *connection, redisReply *reply)
+static void free_connection(agc_redis_connection_t *connection)
 {
 	if (!connection)
 		return;
@@ -836,33 +746,15 @@ static void free_connection(agc_redis_connection_t *connection, redisReply *repl
 		return;
 	}
 
-	if (is_connection_break(reply)) {
+	if (connection->cc && connection->cc->err) {
 		release_context(connection);
 	}
 
 	agc_queue_push(REDIS_CONTEXT_QUEUE, connection);
 }
 
-static agc_status_t decodeResult(redisReply *reply)
-{
-	agc_status_t status = AGC_STATUS_GENERR;
-	if (reply == NULL) {
-		return status;
-	}
-
-	if (reply->type == REDIS_REPLY_ERROR) {
-		status = AGC_STATUS_GENERR;
-	}
-
-	status = AGC_STATUS_SUCCESS;
-	freeReplyObject(reply);
-	return status;
-}
-
 static agc_bool_t check_connection(agc_redis_connection_t *connection)
-{
-	agc_time_t current_time;
-		
+{		
 	if (!connection)
 		return AGC_FALSE;
 
@@ -928,24 +820,6 @@ static agc_time_t next_connect_time()
 	return (agc_time_now() / 1000) + 10000;
 }
 
-static agc_bool_t is_connection_break(redisReply *reply)
-{
-	agc_bool_t connect_down = AGC_FALSE;
-	
-	if (reply) {
-		switch (cluster_reply_error_type(reply)) {
-			case CLUSTER_ERR_CLUSTERDOWN:
-				connect_down = AGC_TRUE;
-				break;
-
-			default:
-				break;
-		}
-	}	
-
-	return connect_down;
-}
-
 static void get_strvalue(redisReply *reply, char **result, int *len)
 {
 	char *result_ptr = NULL;
@@ -973,61 +847,112 @@ static void get_intvalue(redisReply *reply, int *result)
 		*result = (int)reply->integer;
 	}
 }
-
-static agc_status_t redis_get_pipeline(const char *tablename, keys_t *keys, keyvalues_t **keyvalues)
+
+static agc_status_t agc_redis_multireplies(agc_redis_connection_t *connection, int replies)
 {
-	agc_redis_connection_t *connection  = NULL;
+	agc_status_t status = AGC_STATUS_SUCCESS;
 	redisReply *reply;
-	keys_t *l_key;
-	char tmp[512];
-	keyvalues_t *header = NULL;
-	keyvalues_t *l_keyvalue = NULL;
-	keyvalues_t *tail= NULL;
-	int failed = 0;
+	int i;
 
-	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
-	}
-
-	for (l_key = keys; l_key; l_key = l_key->next)  {
-		if (tablename) {
-			agc_snprintfv(tmp, sizeof(tmp), "GET %s", l_key->key);
-		} else {
-			agc_snprintfv(tmp, sizeof(tmp), "GET %s", l_key->key);
-		}
-		redisClusterAppendCommand(connection->cc, tmp);
-	}
-
-	for (l_key = keys; l_key; l_key = l_key->next) {
+	assert(connection);
+	for (i = 0; i < replies; i++) {
 		redisClusterGetReply(connection->cc, &reply);
-		if (is_connection_break(reply)) { // connection error, skip
-			failed++;
-			release_context(connection);
+
+		if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
+			status = AGC_STATUS_GENERR;
+			freeReplyObject(reply);
 			break;
 		}
-		
-		l_keyvalue = malloc(sizeof(l_keyvalue));
-		memset(l_keyvalue, 0, sizeof(l_keyvalue));
-		if (!header) {
-			header = l_keyvalue;
-		} 
 
-		if (tail) {
-			tail->next = l_keyvalue;
-		}
-
-		tail = l_keyvalue;
-
-		l_keyvalue->key = strdup(l_key->key);
-		get_strvalue(reply, &l_keyvalue->value, l_keyvalue->value_len);
-			
+		freeReplyObject(reply);
 	}
 
 	if (connection->cc)
 		redisClusterReset(connection->cc);
 
-	free_connection(connection, NULL);
-
-	return failed ? AGC_STATUS_GENERR : AGC_STATUS_SUCCESS;
+	return status;
 }
 
+static redisReply *agc_redis_hashargv(agc_redis_connection_t *connection, const char *cmd, const char *tablename, keys_t *keys, keyvalues_t *keyvalues)
+{
+	int keys_count = 0;
+	int argcount, len, i;
+	keys_t *iter;
+	keyvalues_t *iter_kv;
+	char **args = NULL;
+	agc_size_t *argvlen = NULL;
+	redisReply *reply;
+	
+	if (!connection || !cmd || !tablename)
+		return NULL;
+
+	if (!keys && !keyvalues)
+		return NULL;
+
+	if (keys && keyvalues)
+		return NULL;
+
+	if (keys) {
+		for (iter = keys; iter; iter = iter->next) {
+			keys_count++;
+		}	
+		 // command + tablename + (number of keys)
+		argcount = 2 + keys_count;
+	} else {
+		for (iter_kv = keyvalues; iter_kv; iter_kv = iter_kv->next) {
+			keys_count++;
+		}	
+		 // command + tablename + (number of key and value)
+		argcount = 2 + keys_count  * 2;
+	}
+	
+	args = malloc(argcount * sizeof(char *));
+	argvlen = malloc(argcount * sizeof(agc_size_t));
+
+	len = strlen(cmd);
+	args[0] = malloc(len);
+    	argvlen[0] = len;
+    	memcpy(args[0], cmd, len);
+
+	len = strlen(tablename);
+	args[1] = malloc(len);
+	argvlen[1] = len ;
+	memcpy(args[1], tablename, len);
+
+	if (keys) { 
+		for (i=0, iter = keys; i < keys_count; i++, iter = iter->next) {
+			int argsidx = 2 + i;
+			int key_len = strlen(iter->key);
+
+			args[argsidx] = malloc(key_len * sizeof(char));
+			memcpy(args[argsidx], iter->key, key_len);
+			argvlen[argsidx] = key_len;
+		}	
+	} else {
+		for (i=0, iter_kv = keyvalues; i < keys_count; i++, iter_kv = iter_kv->next) {
+			int argsidx = 2 + (i*2);
+			int key_len = strlen(iter_kv->key);
+			int value_len = strlen(iter_kv->value);
+			
+			args[argsidx] = malloc(key_len * sizeof(char));
+			args[argsidx+1] = malloc(value_len * sizeof(char));
+			memcpy(args[argsidx], iter_kv->key, key_len);
+			memcpy(args[argsidx+1], iter_kv->value, value_len);
+			argvlen[argsidx] = key_len;
+			argvlen[argsidx+1] = value_len;
+		}
+	}
+
+	
+	reply =  redisClusterCommandArgv(connection->cc, argcount, (const char**)args, argvlen);
+
+	//release argvs
+	for (i=0; i < argcount; i++) {
+		agc_safe_free(args[i]);
+	}
+
+	agc_safe_free(args);
+	agc_safe_free(argvlen);	
+
+	return reply;
+}
