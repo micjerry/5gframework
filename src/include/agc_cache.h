@@ -43,7 +43,7 @@ AGC_DECLARE(agc_status_t) agc_cache_hashget(const char *tablename, const char *k
 
 AGC_DECLARE(agc_status_t) agc_cache_hashmset(const char *tablename, keyvalues_t *keyvalues);
 
-AGC_DECLARE(agc_status_t) agc_cache_hashmget(const char *tablename, keys_t *keys,  keyvalues_t *keyvalues);
+AGC_DECLARE(agc_status_t) agc_cache_hashmget(const char *tablename, keys_t *keys,  keyvalues_t **keyvalues);
 
 AGC_DECLARE(agc_status_t) agc_cache_hashdel(const char *tablename, keys_t *keys);
 
@@ -60,7 +60,7 @@ typedef struct {
     agc_status_t (*agc_cache_hashset_func)(const char *tablename, const char *key, const char *value);
     agc_status_t (*agc_cache_hashget_func)(const char *tablename, const char *key, char **value, int *len);
     agc_status_t (*agc_cache_hashmset_func)(const char *tablename, keyvalues_t *keyvalues);
-    agc_status_t (*agc_cache_hashmget_func)(const char *tablename, keys_t *keys,  keyvalues_t *keyvalues);
+    agc_status_t (*agc_cache_hashmget_func)(const char *tablename, keys_t *keys,  keyvalues_t **keyvalues);
     agc_status_t (*agc_cache_hashdel_func)(const char *tablename, keys_t *keys);
 } agc_cache_actions_t;
 

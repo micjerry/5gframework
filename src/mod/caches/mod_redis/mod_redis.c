@@ -1,5 +1,7 @@
 #include <agc.h>
+#include <yaml.h>
 #include <hiredis.h>
+#include <hircluster.h>
 
 AGC_MODULE_LOAD_FUNCTION(mod_redis_load);
 AGC_MODULE_SHUTDOWN_FUNCTION(mod_redis_shutdown);
@@ -41,7 +43,7 @@ static agc_status_t agc_cache_redis_hashget(const char *tablename, const char *k
 
 static agc_status_t agc_cache_redis_hashmset(const char *tablename, keyvalues_t *keyvalues);
 	
-static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys,  keyvalues_t *keyvalues);
+static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys,  keyvalues_t **keyvalues);
 
 static agc_status_t agc_cache_redis_hashdel(const char *tablename,  keys_t *keys);
 
@@ -68,7 +70,7 @@ struct agc_redis_connection_s {
 	uint8_t connected;
 	redisClusterContext *cc;
 	agc_time_t connect_time;
-}
+};
 
 static agc_queue_t *REDIS_CONTEXT_QUEUE;
 
@@ -88,14 +90,14 @@ static agc_bool_t check_connection(agc_redis_connection_t *connection);
 
 static agc_time_t next_connect_time();
 
-static void create_context(agc_redis_connection_t *connection);
+static agc_status_t create_context(agc_redis_connection_t *connection);
 static void release_context(agc_redis_connection_t *connection);
 
-static void get_strvalue(redisReply *reply, char **result);
+static void get_strvalue(redisReply *reply, char **result,  int *len);
 static void get_intvalue(redisReply *reply, int *result);
 
 static agc_status_t agc_redis_multireplies(agc_redis_connection_t *connection, int replies);
-static redisReply *agc_redis_hashargv(agc_redis_connection_t *connection, const char *cmd, const char *tablename, keys_t *keys, keyvalues_t *keyvalues)
+static redisReply *agc_redis_hashargv(agc_redis_connection_t *connection, const char *cmd, const char *tablename, keys_t *keys, keyvalues_t *keyvalues);
 	
 AGC_MODULE_LOAD_FUNCTION(mod_redis_load)
 {
@@ -250,7 +252,7 @@ static agc_status_t agc_cache_redis_get_pipeline(keys_t *keys, keyvalues_t **key
 	}
 
 	for (iter = keys; iter; iter = iter->next) {
-		redisClusterGetReply(connection->cc, &reply);
+		redisClusterGetReply(connection->cc, (void **)&reply);
 		if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
 			status = AGC_STATUS_GENERR;
 			freeReplyObject(reply);
@@ -293,12 +295,13 @@ static agc_status_t agc_cache_redis_delete_pipeline(keys_t *keys)
 	redisReply *reply;
 	keys_t *iter;
 	int cmds = 0;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!keys)
-		return  AGC_STATUS_GENERR;
+		return  status;
 
 	if (!(connection = get_connection())) {
-		return AGC_STATUS_GENERR;
+		return status;
 	}
 
 	for (iter = keys; iter; iter = iter->next)  {
@@ -478,7 +481,7 @@ static agc_status_t agc_cache_redis_hashmset(const char *tablename, keyvalues_t 
 	
 }
 
-static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys,  keyvalues_t *keyvalues)
+static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys,  keyvalues_t **keyvalues)
 {
 	agc_redis_connection_t *connection  = NULL;
 	redisReply *reply;
@@ -501,15 +504,12 @@ static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys
 	
 	free_connection(connection);
 
-
-	if (!reply ||  reply->type == REDIS_REPLY_ERROR || reply->type != REDIS_REPLY_ARRAY) {
+	if (!reply || ( reply->type == REDIS_REPLY_ERROR) || (reply->type != REDIS_REPLY_ARRAY)) {
 		freeReplyObject(reply);
 		return status;
 	}
 
-	for (i = 0; iter = keys; iter; iter = iter->next, i++) {
-		char *value = NULL;
-		int value_len = 0;
+	for (i = 0, iter = keys; iter; iter = iter->next, i++) {
 		new_keyvalue = malloc(sizeof(keyvalues_t));
 		memset(new_keyvalue, 0, sizeof(keyvalues_t));
 
@@ -524,14 +524,8 @@ static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys
 		tail = new_keyvalue;
 
 		new_keyvalue->key = strdup(iter->key);
-
-		value_len = strlen(reply->element[i]->str)
-		value = malloc(value_len));
-		assert(value);
-		strncpy(value, reply->element[i]->str, value_len);
-
-		new_keyvalue->value = value;
-		new_keyvalue->value_len = value_len;	
+		new_keyvalue->value = strndup(reply->element[i]->str, reply->element[i]->len);
+		new_keyvalue->value_len = reply->element[i]->len;	
 	}
 
 	*keyvalues = header;
@@ -697,7 +691,7 @@ static agc_status_t create_connection()
 	if ( !SYSTEM_RUNNING)
 		return AGC_STATUS_SUCCESS;
 
-	agc_redis_connection_t *connection = (agc_redis_connection_t *)agc_memory_alloc(module_pool, sizeof(agc_redis_connection_t));
+	connection = (agc_redis_connection_t *)agc_memory_alloc(module_pool,  sizeof(agc_redis_connection_t));
 
 	assert(connection);
 	
@@ -716,7 +710,7 @@ static agc_redis_connection_t *get_connection()
 	if (!SYSTEM_RUNNING)
 		return NULL;
 
-	while (agc_queue_trypop((queue, &pop) != AGC_STATUS_SUCCESS && (retries < MAX_POOL_RETRIES)) {
+	while ((agc_queue_trypop(REDIS_CONTEXT_QUEUE, &pop) != AGC_STATUS_SUCCESS) && (retries < MAX_POOL_RETRIES)) {
 		retries++;
 		agc_yield(10000);
 	}
@@ -729,7 +723,7 @@ static agc_redis_connection_t *get_connection()
 	connection = (agc_redis_connection_t *)pop;
 	if (!check_connection(connection)) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "The connection can not create.\n");
-		agc_queue_push(connection);
+		agc_queue_push(REDIS_CONTEXT_QUEUE, connection);
 		return NULL;
 	}
 
@@ -762,11 +756,10 @@ static agc_bool_t check_connection(agc_redis_connection_t *connection)
 		return AGC_TRUE;
 
 	//try to reconnect redis
-	if (connection->connect_time > (agc_time_now() / 1000) {
-		redisClusterContext *cc;
-		
-		if (create_context(connection) == 	AGC_STATUS_SUCCESS)
+	if (connection->connect_time > (agc_timer_now() / 1000)) {	
+		if (create_context(connection) == AGC_STATUS_SUCCESS) {
 			return AGC_TRUE;
+		}
 	}
 
 	return AGC_FALSE;
@@ -774,32 +767,37 @@ static agc_bool_t check_connection(agc_redis_connection_t *connection)
 
 static agc_status_t create_context(agc_redis_connection_t *connection)
 {
-	redisClusterContext *cc;
+	redisClusterContext *cc = NULL;
+	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!connection)
-		return AGC_STATUS_GENERR;
+		return status;
 
-	if (connection->cc)
+	if (connection->cc) {
 		redisClusterFree(connection->cc);
-
-	cc = redisClusterContextInit();
-	redisClusterSetOptionAddNodes(cc, redis_addrs);
-	redisClusterConnect2(cc);
-	if (cc != NULL && cc->err) {
-		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Create redis context failed %s.\n", redis_addrs);
-		connection->connected = 0;
 		connection->cc = NULL;
-		connection->connect_time = next_connect_time();
-		redisClusterFree(cc);
-		return AGC_STATUS_GENERR;
-	} else {
-		connection->connected = 1;
-		connection->cc = cc;
-		connection->connect_time = 0;
-		return AGC_STATUS_SUCCESS:
 	}
 
-	return AGC_STATUS_SUCCESS;
+	cc = redisClusterContextInit();
+	if (cc) {
+		redisClusterSetOptionAddNodes(cc, redis_addrs);
+		redisClusterConnect2(cc);
+		if (cc->err) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Create redis context failed %s.\n", redis_addrs);
+			connection->connected = 0;
+			connection->cc = NULL;
+			connection->connect_time = next_connect_time();
+			redisClusterFree(cc);
+		} else {
+			agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Create redis context success %s.\n", redis_addrs);
+			connection->connected = 1;
+			connection->cc = cc;
+			connection->connect_time = 0;
+			status = AGC_STATUS_SUCCESS;
+		}		
+	}
+
+	return status;
 }
 
 static void release_context(agc_redis_connection_t *connection)
@@ -856,7 +854,7 @@ static agc_status_t agc_redis_multireplies(agc_redis_connection_t *connection, i
 
 	assert(connection);
 	for (i = 0; i < replies; i++) {
-		redisClusterGetReply(connection->cc, &reply);
+		redisClusterGetReply(connection->cc,  (void **)&reply);
 
 		if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
 			status = AGC_STATUS_GENERR;

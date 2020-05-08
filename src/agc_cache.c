@@ -9,7 +9,7 @@ AGC_DECLARE(agc_status_t) agc_cache_init(agc_memory_pool_t *pool)
 
 AGC_DECLARE(agc_status_t) agc_cache_shutdown(void)
 {
-	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Cache shutdown success.\n")
+	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Cache shutdown success.\n");
 }
 
 AGC_DECLARE(void) agc_cache_register_impl(agc_cache_actions_t *actions)
@@ -116,7 +116,7 @@ AGC_DECLARE(agc_status_t) agc_cache_hashmset(const char *tablename, keyvalues_t 
 	return cache_actions->agc_cache_hashmset_func(tablename, keyvalues);
 }
 
-AGC_DECLARE(agc_status_t) agc_cache_hashmget(const char *tablename, keys_t *keys,  keyvalues_t *keyvalues)
+AGC_DECLARE(agc_status_t) agc_cache_hashmget(const char *tablename, keys_t *keys,  keyvalues_t **keyvalues)
 {
 	if (!cache_actions || !cache_actions->agc_cache_hashmget_func)
 		return AGC_STATUS_GENERR;
