@@ -826,9 +826,7 @@ static void get_strvalue(redisReply *reply, char **result, int *len)
 		return;
 	
 	if (reply->type == REDIS_REPLY_STRING) {
-		result_ptr = malloc(reply->len);
-		strncpy(result_ptr, reply->str, reply->len);
-		*result = result_ptr;
+		*result = strndup(reply->str, reply->len);
 		*len = reply->len;
 	}  else {
 		*result = NULL;

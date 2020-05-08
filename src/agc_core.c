@@ -9,101 +9,108 @@ struct agc_runtime runtime = { 0 };
 
 AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 {
-    agc_uuid_t uuid;
+	agc_uuid_t uuid;
+
+	memset(&runtime, 0, sizeof(runtime));
+	gethostname(runtime.hostname, sizeof(runtime.hostname));
+	runtime.cpu_count = sysconf (_SC_NPROCESSORS_ONLN);
+	runtime.hard_log_level = AGC_LOG_DEBUG;
     
-    memset(&runtime, 0, sizeof(runtime));
-    gethostname(runtime.hostname, sizeof(runtime.hostname));
-    runtime.cpu_count = sysconf (_SC_NPROCESSORS_ONLN);
-    runtime.hard_log_level = AGC_LOG_DEBUG;
+	//initial random
+	srand(time(NULL));
     
-    //initial random
-    srand(time(NULL));
-    
-    if (apr_initialize() != AGC_STATUS_SUCCESS) {
+	if (apr_initialize() != AGC_STATUS_SUCCESS) {
 		*err = "FATAL ERROR! Could not initialize APR\n";
 		return AGC_STATUS_MEMERR;
 	}
     
-    if (!(runtime.memory_pool = agc_core_memory_init())) {
+	if (!(runtime.memory_pool = agc_core_memory_init())) {
 		*err = "FATAL ERROR! Could not allocate memory pool\n";
 		return AGC_STATUS_MEMERR;
 	}
     
-    agc_assert(runtime.memory_pool != NULL);
+	agc_assert(runtime.memory_pool != NULL);
     
-    agc_dir_make_recursive(AGC_GLOBAL_dirs.base_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
+	agc_dir_make_recursive(AGC_GLOBAL_dirs.base_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.mod_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.conf_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.log_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.run_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
+	
+	agc_mutex_init(&runtime.uuid_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
+	agc_mutex_init(&runtime.global_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
     
-    agc_mutex_init(&runtime.uuid_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
-    agc_mutex_init(&runtime.global_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
+	if (console) {
+		runtime.console = stdout;
+	}
     
-    if (console) {
-        runtime.console = stdout;
-    }
+	//init log 
+	if (agc_log_init(runtime.memory_pool, AGC_FALSE) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Log init failed.\n");
+		return AGC_STATUS_GENERR;
+	} 
     
-    //init log 
-    if (agc_log_init(runtime.memory_pool, AGC_FALSE) != AGC_STATUS_SUCCESS) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Log init failed.\n");
-        return AGC_STATUS_GENERR;
-    } 
+	//init event 
+	if (agc_event_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Event init failed.\n");
+		return AGC_STATUS_GENERR;
+	}
     
-    //init event 
-    if (agc_event_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Event init failed.\n");
-        return AGC_STATUS_GENERR;
-    }
+	//init timer
+	if (agc_timer_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Timer init failed.\n");
+		return AGC_STATUS_GENERR;
+	}
     
-    //init timer
-    if (agc_timer_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Timer init failed.\n");
-        return AGC_STATUS_GENERR;
-    }
+	//init connection
+	if (agc_conn_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Connection init failed.\n");
+		return AGC_STATUS_GENERR;
+	}   
     
-    //init connection
-    if (agc_conn_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Connection init failed.\n");
-        return AGC_STATUS_GENERR;
-    }   
+	//init driver
+	if (agc_diver_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Driver init failed.\n");
+		return AGC_STATUS_GENERR;
+	}  
     
-    //init driver
-    if (agc_diver_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Driver init failed.\n");
-        return AGC_STATUS_GENERR;
-    }  
+	//init api
+	if (agc_api_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Api init failed.\n");
+		return AGC_STATUS_GENERR;
+	}  
+
+	//init cache
+	if (agc_cache_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Cache init failed.\n");
+		return AGC_STATUS_GENERR;
+	}  
     
-    //init api
-    if (agc_api_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Api init failed.\n");
-        return AGC_STATUS_GENERR;
-    }  
-    
-    return AGC_STATUS_SUCCESS;
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_core_destroy()
 {
-    agc_diver_shutdown();
-    agc_conn_shutdown();
-    agc_timer_shutdown();
-    agc_event_shutdown();
-    agc_log_shutdown();
-    agc_api_shutdown();
+	agc_diver_shutdown();
+	agc_conn_shutdown();
+	agc_timer_shutdown();
+	agc_event_shutdown();
+	agc_log_shutdown();
+	agc_api_shutdown();
+	agc_cache_shutdown();
     
-    agc_safe_free(AGC_GLOBAL_dirs.mod_dir);
-    agc_safe_free(AGC_GLOBAL_dirs.conf_dir);
-    agc_safe_free(AGC_GLOBAL_dirs.log_dir);
-    agc_safe_free(AGC_GLOBAL_dirs.run_dir);
-    agc_safe_free(AGC_GLOBAL_dirs.certs_dir);
+	agc_safe_free(AGC_GLOBAL_dirs.mod_dir);
+	agc_safe_free(AGC_GLOBAL_dirs.conf_dir);
+	agc_safe_free(AGC_GLOBAL_dirs.log_dir);
+	agc_safe_free(AGC_GLOBAL_dirs.run_dir);
+	agc_safe_free(AGC_GLOBAL_dirs.certs_dir);
 
-    if (runtime.memory_pool) {
+	if (runtime.memory_pool) {
 		apr_pool_destroy(runtime.memory_pool);
 		apr_terminate();
 	}
-    
-    return AGC_STATUS_SUCCESS;
+	
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(void) agc_core_set_globals(void)
