@@ -24,3 +24,7 @@ make
 
 make install
 
+#edit
+touch /etc/ld.so.conf.d/agclibs.conf
+echo "/usr/local/lib/" >> /etc/ld.so.conf.d/agclibs.conf
+ldconfig

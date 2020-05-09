@@ -101,7 +101,11 @@ static redisReply *agc_redis_hashargv(agc_redis_connection_t *connection, const 
 	
 AGC_MODULE_LOAD_FUNCTION(mod_redis_load)
 {
+	assert(pool);
 	module_pool = pool;
+	
+	 *module_interface = agc_loadable_module_create_interface(module_pool, modname);
+ 
 	if (load_configuration() !=  AGC_STATUS_SUCCESS) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Redis load configuration failed.\n");
 		return AGC_STATUS_GENERR;
