@@ -21,19 +21,34 @@ AGC_DECLARE(agc_status_t) agc_api_shutdown(void)
     return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(agc_status_t) agc_api_register(agc_api_interface_t *api)
+AGC_DECLARE(agc_status_t) agc_api_register(const char *name, const char *desc, const char *syntax, agc_api_func func)
 {
-    assert(api);
-    agc_mutex_lock(APIS_MUTEX);
-    api->next = NULL;
+	if (!name || !func) 
+		return AGC_STATUS_FALSE;
+	
+	agc_api_interface_t *api = (agc_api_interface_t *)agc_memory_alloc(RUNTIME_POOL, sizeof(agc_api_interface_t));
+	assert(api);
+
+	api->name = agc_core_strdup(RUNTIME_POOL, name);
+
+	if (desc)
+		api->desc = agc_core_strdup(RUNTIME_POOL, desc);
+
+	if (syntax)
+		api->syntax = agc_core_strdup(RUNTIME_POOL, syntax);
+
+	api->function = func;
+	
+	agc_mutex_lock(APIS_MUTEX);
+	api->next = NULL;
     
-    if (APIS != NULL) {
-        api->next = APIS;
-    }
+	if (APIS != NULL) {
+		api->next = APIS;
+	}
     
-    APIS = api;
-    agc_mutex_unlock(APIS_MUTEX);
-    return AGC_STATUS_SUCCESS;
+	APIS = api;
+	agc_mutex_unlock(APIS_MUTEX);
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_api_interface_t *) agc_api_find(const char *cmd)

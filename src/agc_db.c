@@ -208,7 +208,7 @@ AGC_DECLARE(agc_db_t *) agc_db_open_file(const char *filename)
 		failed = 1;
 	}
 
-	if (db_ret != OK) {
+	if (db_ret != SQLITE_OK) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "SQL  ERR [%s]\n", agc_db_errmsg(db));
 		agc_db_close(db);
 		db = NULL;

@@ -36,6 +36,7 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.conf_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.log_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	agc_dir_make_recursive(AGC_GLOBAL_dirs.run_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
+	agc_dir_make_recursive(AGC_GLOBAL_dirs.db_dir, AGC_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	
 	agc_mutex_init(&runtime.uuid_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
 	agc_mutex_init(&runtime.global_mutex, AGC_MUTEX_NESTED, runtime.memory_pool);
@@ -104,6 +105,7 @@ AGC_DECLARE(agc_status_t) agc_core_destroy()
 	agc_safe_free(AGC_GLOBAL_dirs.log_dir);
 	agc_safe_free(AGC_GLOBAL_dirs.run_dir);
 	agc_safe_free(AGC_GLOBAL_dirs.certs_dir);
+	agc_safe_free(AGC_GLOBAL_dirs.db_dir);
 
 	if (runtime.memory_pool) {
 		apr_pool_destroy(runtime.memory_pool);
@@ -115,67 +117,79 @@ AGC_DECLARE(agc_status_t) agc_core_destroy()
 
 AGC_DECLARE(void) agc_core_set_globals(void)
 {
-    char base_dir[AGC_MAX_PATHLEN] = AGC_PREFIX_DIR;
-    
-    if (!AGC_GLOBAL_dirs.mod_dir && (AGC_GLOBAL_dirs.mod_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
-        if (AGC_GLOBAL_dirs.base_dir) {
-            agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s%smod", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
-        } else {
+	char base_dir[AGC_MAX_PATHLEN] = AGC_PREFIX_DIR;
+
+	if (!AGC_GLOBAL_dirs.mod_dir && (AGC_GLOBAL_dirs.mod_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
+		if (AGC_GLOBAL_dirs.base_dir) {
+			agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s%smod", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
+		} else {
 #ifdef AGC_MOD_DIR
-            agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s", AGC_MOD_DIR);
+			agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s", AGC_MOD_DIR);
 #else
-            agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s%smod", base_dir, AGC_PATH_SEPARATOR);
+			agc_snprintf(AGC_GLOBAL_dirs.mod_dir, AGC_MAX_PATHLEN, "%s%smod", base_dir, AGC_PATH_SEPARATOR);
 #endif
-        }
-    }
+		}
+	}
     
-    if (!AGC_GLOBAL_dirs.conf_dir && (AGC_GLOBAL_dirs.conf_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
-        if (AGC_GLOBAL_dirs.base_dir) {
-            agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s%sconf", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
-        } else {
+	if (!AGC_GLOBAL_dirs.conf_dir && (AGC_GLOBAL_dirs.conf_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
+		if (AGC_GLOBAL_dirs.base_dir) {
+			agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s%sconf", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
+		} else {
 #ifdef AGC_CONF_DIR
-            agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s", AGC_CONF_DIR);
+			agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s", AGC_CONF_DIR);
 #else
-            agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s%sconf", base_dir, AGC_PATH_SEPARATOR);
+			agc_snprintf(AGC_GLOBAL_dirs.conf_dir, AGC_MAX_PATHLEN, "%s%sconf", base_dir, AGC_PATH_SEPARATOR);
 #endif
-        }
-    }  
+		}
+	}  
     
-    if (!AGC_GLOBAL_dirs.log_dir && (AGC_GLOBAL_dirs.log_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
-        if (AGC_GLOBAL_dirs.base_dir) {
-            agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s%slog", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
-        } else {
+	if (!AGC_GLOBAL_dirs.log_dir && (AGC_GLOBAL_dirs.log_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
+		if (AGC_GLOBAL_dirs.base_dir) {
+			agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s%slog", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
+		} else {
 #ifdef AGC_LOG_DIR
-            agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s", AGC_LOG_DIR);
+			agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s", AGC_LOG_DIR);
 #else
-            agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s%slog", base_dir, AGC_PATH_SEPARATOR);
+			agc_snprintf(AGC_GLOBAL_dirs.log_dir, AGC_MAX_PATHLEN, "%s%slog", base_dir, AGC_PATH_SEPARATOR);
 #endif            
-        }
-    }
+		}
+	}
 
-    if (!AGC_GLOBAL_dirs.run_dir && (AGC_GLOBAL_dirs.run_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
-        if (AGC_GLOBAL_dirs.base_dir) {
-            agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s%srun", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
-        } else {
+	if (!AGC_GLOBAL_dirs.run_dir && (AGC_GLOBAL_dirs.run_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
+		if (AGC_GLOBAL_dirs.base_dir) {
+			agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s%srun", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
+		} else {
 #ifdef AGC_RUN_DIR
-            agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s", AGC_RUN_DIR);
+			agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s", AGC_RUN_DIR);
 #else
-            agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s%srun", base_dir, AGC_PATH_SEPARATOR);
+			agc_snprintf(AGC_GLOBAL_dirs.run_dir, AGC_MAX_PATHLEN, "%s%srun", base_dir, AGC_PATH_SEPARATOR);
 #endif 
-        }
-    } 
+		}
+	} 
 
-    if (!AGC_GLOBAL_dirs.certs_dir && (AGC_GLOBAL_dirs.certs_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
-        if (AGC_GLOBAL_dirs.base_dir) {
-            agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s%scerts", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
-        } else {
+	if (!AGC_GLOBAL_dirs.certs_dir && (AGC_GLOBAL_dirs.certs_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
+		if (AGC_GLOBAL_dirs.base_dir) {
+			agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s%scerts", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
+		} else {
 #ifdef AGC_CERTS_DIR
-            agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s", AGC_CERTS_DIR);
+			agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s", AGC_CERTS_DIR);
 #else
-            agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s%scerts", base_dir, AGC_PATH_SEPARATOR);
+			agc_snprintf(AGC_GLOBAL_dirs.certs_dir, AGC_MAX_PATHLEN, "%s%scerts", base_dir, AGC_PATH_SEPARATOR);
 #endif
-        }
-    }
+		}
+	}
+
+	if (!AGC_GLOBAL_dirs.db_dir && (AGC_GLOBAL_dirs.db_dir = (char *) malloc(AGC_MAX_PATHLEN))) {
+		if (AGC_GLOBAL_dirs.base_dir) {
+			agc_snprintf(AGC_GLOBAL_dirs.db_dir, AGC_MAX_PATHLEN, "%s%sdb", AGC_GLOBAL_dirs.base_dir, AGC_PATH_SEPARATOR);
+		} else {
+#ifdef AGC_DB_DIR
+			agc_snprintf(AGC_GLOBAL_dirs.db_dir, AGC_MAX_PATHLEN, "%s", AGC_DB_DIR);
+#else
+			agc_snprintf(AGC_GLOBAL_dirs.db_dir, AGC_MAX_PATHLEN, "%s%sdb", base_dir, AGC_PATH_SEPARATOR);
+#endif
+		}
+	}  
     
 }
 
@@ -295,5 +309,9 @@ AGC_DECLARE(agc_bool_t) agc_core_is_running(void)
     return runtime.running ? AGC_TRUE : AGC_FALSE;
 }
 
+AGC_DECLARE(const char *) agc_core_get_hostname(void)
+{
+	return runtime.hostname;
+}
 
 

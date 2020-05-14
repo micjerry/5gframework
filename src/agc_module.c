@@ -363,21 +363,21 @@ static void * agc_loadable_module_exec(agc_thread_t *thread, void *obj)
 
 static void agc_loadable_module_runtime(void)
 {
-    agc_hash_index_t *hi;
-    void *val;
+	agc_hash_index_t *hi;
+	void *val;
 	agc_loadable_module_t *module;
     
-    agc_mutex_lock(loadable_modules.mutex);
-    for (hi = agc_hash_first(loadable_modules.pool, loadable_modules.module_hash); hi; hi = agc_hash_next(hi)) {
-        val = agc_hash_this_val(hi);
-        module = (agc_loadable_module_t *) val;
+	agc_mutex_lock(loadable_modules.mutex);
+	for (hi = agc_hash_first(loadable_modules.pool, loadable_modules.module_hash); hi; hi = agc_hash_next(hi)) {
+		val = agc_hash_this_val(hi);
+		module = (agc_loadable_module_t *) val;
         
-        if (module->runtime_func) {
+		if (module->runtime_func) {
 			agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "Starting runtime thread for %s\n", module->module_interface->module_name);
 			module->thread = agc_core_launch_thread(agc_loadable_module_exec, module, module->pool);
 		}
-    }
-    agc_mutex_unlock(loadable_modules.mutex);
+	}
+	agc_mutex_unlock(loadable_modules.mutex);
 }
 
 AGC_DECLARE(agc_loadable_module_interface_t *) agc_loadable_module_create_interface(agc_memory_pool_t *pool, const char *name)
