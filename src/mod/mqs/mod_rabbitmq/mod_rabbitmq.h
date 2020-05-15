@@ -47,7 +47,9 @@ typedef struct agcmq_producer_profile_s {
 	agc_thread_t *producer_thread;
 	agc_bool_t running;
 	agc_memory_pool_t *pool;
-	char *custom_attr;
+
+	agc_queue_t *send_queue;
+	uint8_t event_list[EVENT_ID_LIMIT];
 } agcmq_producer_profile_t;
 
 typedef struct agcmq_consumer_profile_s {
@@ -70,11 +72,13 @@ struct {
 
 agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_infos, agcmq_conn_parameter_t *parameters, agc_memory_pool_t *pool);
 agc_status_t agcmq_producer_destroy(agcmq_producer_profile_t **profile);
+agc_status_t agcmq_producer_send(agcmq_producer_profile_t *producer, agcmq_message_t *msg);
 
 agc_status_t agcmq_consumer_create(char *name, agcmq_connection_info_t *conn_infos, agcmq_conn_parameter_t *parameters, agc_memory_pool_t *pool);
 agc_status_t agcmq_consumer_destroy(agcmq_consumer_profile_t **profile);
 
-agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, amqp_connection_state_t **conn, char *profile_name, char *custom_attr);
+int agcmq_parse_amqp_reply(amqp_rpc_reply_t x, char const *context);
+agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, amqp_connection_state_t **conn, char *profile_name);
 void agcmq_connection_close(amqp_connection_state_t *conn);
 
 void *agcmq_producer_thread(agc_thread_t *thread, void *data);

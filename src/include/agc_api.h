@@ -37,7 +37,7 @@ AGC_DECLARE(agc_status_t) agc_api_init(agc_memory_pool_t *pool);
 
 AGC_DECLARE(agc_status_t) agc_api_shutdown(void);
 
-AGC_DECLARE(agc_status_t) agc_api_register(agc_api_interface_t *api);
+AGC_DECLARE(agc_status_t) agc_api_register(const char *name, const char *desc, const char *syntax, agc_api_func func);
 
 AGC_DECLARE(agc_api_interface_t *) agc_api_find(const char *cmd);
 

@@ -2,6 +2,7 @@
 #define AGC_DB_H
 
 #include <sqlite3.h>
+#include <agc.h>
 
 #define MAX_DB_RETRIES 5
 

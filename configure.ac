@@ -68,6 +68,7 @@ eval confdir="${sysconfdir}/agc"
 default_runtimedir="$rundir"
 default_logfiledir="$logdir"
 default_certsdir="${prefix}/certs"
+default_dbdir="${prefix}/db"
 
 default_modulesdir="${libdir}/agc/mod"
 
@@ -95,6 +96,11 @@ AC_ARG_WITH([modinstdir],
 eval modulesdir="${modulesdir}"
 AC_SUBST(modulesdir)
 AC_DEFINE_UNQUOTED([AGC_MOD_DIR],"${modulesdir}",[where to install the modules to])
+
+AC_ARG_WITH([dbdir],
+    [AS_HELP_STRING([--with-dbdir=DIR], [Put logfiles into this location (default: $prefix/db)])], [dbdir="$withval"], [dbdir="${default_dbdir}"])
+AC_SUBST(dbdir)
+AC_DEFINE_UNQUOTED([AGC_DB_DIR],"${dbdir}",[where to put db files])
 
 AC_SUBST(confdir)
 AC_DEFINE_UNQUOTED([AGC_CONF_DIR],"${confdir}",[directory for configuration files])

@@ -7,5 +7,6 @@
 #define AGC_CERTS_DIR "@certsdir@"
 #define AGC_MOD_DIR "@modulesdir@"
 #define AGC_CONF_DIR "@confdir@"
+#define AGC_DB_DIR "@dbdir@"
 
 #endif

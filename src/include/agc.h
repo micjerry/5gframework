@@ -39,5 +39,6 @@
 #include "agc_connection.h"
 #include "agc_api.h"
 #include "agc_cache.h"
+#include "agc_db.h"
 
 #endif

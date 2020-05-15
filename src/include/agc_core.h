@@ -11,6 +11,7 @@ struct agc_directories {
 	char *log_dir;
 	char *run_dir;
 	char *certs_dir;
+	char *db_dir;
 };
 
 typedef struct agc_directories agc_directories_t;
@@ -63,5 +64,7 @@ AGC_DECLARE(void) agc_os_yield(void);
 AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void *obj, agc_memory_pool_t *pool);
 
 AGC_DECLARE(agc_status_t) agc_core_modload(const char **err);
+
+AGC_DECLARE(const char *) agc_core_get_hostname(void);
                                              
 #endif
