@@ -399,36 +399,34 @@ static void remove_conn(event_connect_t *conn)
 
 static void handle_event(void *data)
 {
-    agc_event_t *event = (agc_event_t *)data;
-    agc_event_t *clone = NULL;
+	agc_event_t *event = (agc_event_t *)data;
+	agc_event_t *clone = NULL;
 	event_connect_t *c, *cp, *last = NULL;
     
-    assert(event != NULL);
+	assert(event != NULL);
     
-    if (!listener.ready) {
+	if (!listener.ready) {
 		return;
 	}
     
-    agc_mutex_lock(listener.sock_mutex);
-    cp = listener.connections;
+	agc_mutex_lock(listener.sock_mutex);
+	cp = listener.connections;
     
-    while (cp) {
+	while (cp) {
+		c = cp;
+		cp = cp->next;
         
-        c = cp;
-        cp = cp->next;
-        
-        if (c->has_event && c->event_list[event->event_id]) {
-            if (agc_event_dup(&clone, event) == AGC_STATUS_SUCCESS) {
-                if (agc_queue_trypush(c->event_queue, clone) != AGC_STATUS_SUCCESS) {
-                    agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Send event failed.\n");
-                    agc_event_destroy(&clone);
-                }
-            }
-        }
-        
-    }
+		if (c->has_event && c->event_list[event->event_id]) {
+			if (agc_event_dup(&clone, event) == AGC_STATUS_SUCCESS) {
+				if (agc_queue_trypush(c->event_queue, clone) != AGC_STATUS_SUCCESS) {
+					agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Send event failed.\n");
+					agc_event_destroy(&clone);
+				}
+			}
+		}
+	}
     
-    agc_mutex_unlock(listener.sock_mutex);
+	agc_mutex_unlock(listener.sock_mutex);
 }
 
 static void send_disconnect(event_connect_t *conn, const char *message)

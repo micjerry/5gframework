@@ -1,0 +1,25 @@
+name: "default"
+type: "producer"
+connections:
+    - 
+      hostname    : "127.0.0.1"
+      virtualhost : "/"
+      username    : "guest"
+      password    : "guest"
+      port        : "5672"
+      heartbeat   : "0"
+    -
+      hostname    : "127.0.0.1"
+      virtualhost : "/"
+      username    : "guest"
+      password    : "guest"
+      port        : "5673"
+      heartbeat   : "0"
+      
+parameters:
+    exname: "TAP.Events"
+    extype: "topic"
+    circuit_breaker_ms: "10000"
+    reconnect_interval_ms : "1000"
+    queue_size: "5000"
+    event_filter: "ALL"

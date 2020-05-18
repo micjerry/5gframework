@@ -174,7 +174,7 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
     console = runtime.console;
     
     //format log datetime
-    now = agc_timer_now();
+    now = agc_timer_curtime();
     // TODO now = agc_micro_time_now();
     agc_time_exp_lt(&tm, now);
 	agc_snprintf(date, sizeof(date), "%0.4d-%0.2d-%0.2d %0.2d:%0.2d:%0.2d.%0.6d",

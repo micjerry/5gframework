@@ -14,6 +14,6 @@ AGC_DECLARE(void) agc_timer_del_timer(agc_event_t *ev);
 
 AGC_DECLARE(void) agc_timer_add_timer(agc_event_t *ev, agc_msec_t timer);
 
-AGC_DECLARE(agc_time_t) agc_timer_now();
+AGC_DECLARE(agc_time_t) agc_timer_curtime();
 
 #endif

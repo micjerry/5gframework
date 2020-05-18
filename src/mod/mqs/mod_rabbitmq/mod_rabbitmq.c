@@ -8,6 +8,8 @@ static agc_event_node_t *mq_subscribe;
 
 static void handle_event(void *data);
 
+static void make_routingkey(char routingKey[MAX_MQ_ROUTING_KEY_LENGTH], agc_event_t *evt);
+
 AGC_STANDARD_API(agcmq_load)
 {
 	return agcmq_load_config();
@@ -59,5 +61,63 @@ AGC_MODULE_SHUTDOWN_FUNCTION(mod_rabbitmq_shutdown)
 		
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Mq  shutdown success.\n");
 	return AGC_STATUS_SUCCESS;
+}
+
+static void handle_event(void *data)
+{
+	agc_hash_index_t *hi;
+	void *val;
+	agcmq_producer_profile_t *producer;
+	agc_event_t *event = (agc_event_t *)data;
+	agc_event_t *clone = NULL;
+	agcmq_message_t *msg = NULL;
+	agcmq_conn_parameter_t *para;
+	agc_time_t now = agc_timer_curtime();
+
+	for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.producer_hash); hi; hi = agc_hash_next(hi))  {
+		val = agc_hash_this_val(hi);
+		producer = (agcmq_producer_profile_t *) val;
+		if (!producer || !producer->running)
+			continue;
+
+		para = producer->conn_parameter;
+
+		if (now < producer->reset_time) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Producer[%s] reset wait.\n", producer->name);
+			continue;
+		}
+
+		if (producer->event_list[event->event_id]) {
+			msg = malloc(sizeof(agcmq_message_t));
+			if (!msg) {
+				agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc memory failed.\n");
+				return;
+			}
+
+			agc_event_serialize_json(event, &msg->pjson);
+			make_routingkey(msg->routing_key, event);
+			if (agc_queue_trypush(producer->send_queue, msg) != AGC_STATUS_SUCCESS) {
+				producer->reset_time = now + para->circuit_breaker_ms * 1000;
+				agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Message queue full.\n");
+				agcmq_producer_msg_destroy(msg);
+			}
+		}
+	}
+
+}
+
+static void make_routingkey(char routingKey[MAX_MQ_ROUTING_KEY_LENGTH], agc_event_t *evt)
+{
+	const char *hostname = NULL;
+	int len;
+
+	hostname = agc_core_get_hostname();
+	len = strlen(hostname);
+	
+	memset(routingKey, 0, sizeof(routingKey));
+	strcpy(routingKey, hostname);
+	routingKey[len] = '.';
+	len++;
+	strcpy(routingKey + len, agc_event_get_name(evt->event_id));
 }
 

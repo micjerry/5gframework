@@ -43,6 +43,8 @@ AGC_DECLARE(agc_api_interface_t *) agc_api_find(const char *cmd);
 
 AGC_DECLARE(agc_status_t) agc_api_execute(const char *cmd, const char *arg, agc_stream_handle_t *stream);
 
+AGC_DECLARE(agc_status_t) agc_console_execute(char *xcmd, int rec, agc_stream_handle_t *istream);
+
 AGC_DECLARE(void) agc_api_stand_stream(agc_stream_handle_t *stream);
 
 AGC_DECLARE(agc_status_t) agc_api_stream_write(agc_stream_handle_t *handle, const char *fmt, ...);

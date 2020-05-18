@@ -73,7 +73,7 @@ AGC_DECLARE(void) agc_timer_add_timer(agc_event_t *ev, agc_msec_t timer)
     ev->timer_set = 1;
 }
 
-AGC_DECLARE(agc_time_t) agc_timer_now()
+AGC_DECLARE(agc_time_t) agc_timer_curtime()
 {
     return current_time;
 }

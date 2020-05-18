@@ -760,7 +760,7 @@ static agc_bool_t check_connection(agc_redis_connection_t *connection)
 		return AGC_TRUE;
 
 	//try to reconnect redis
-	if (connection->connect_time > (agc_timer_now() / 1000)) {	
+	if (connection->connect_time > (agc_timer_curtime() / 1000)) {	
 		if (create_context(connection) == AGC_STATUS_SUCCESS) {
 			return AGC_TRUE;
 		}

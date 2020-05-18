@@ -26,26 +26,26 @@ struct agc_event {
 	/*! the event id (descriptor) */
 	int event_id;
         
-    /*! the source of event, the same soure will be handled by same thread */
-    int source_id;
+	/*! the source of event, the same soure will be handled by same thread */
+	int source_id;
     
 	/*! the event headers */
 	agc_event_header_t *headers; 
     
-    agc_event_header_t *last_header;
+	agc_event_header_t *last_header;
     
-    /*! the context of event */
-    void *context;
+	 /*! the context of event */
+	void *context;
     
 	/*! the body of the event */
 	char *body;
     
-    agc_event_callback_func call_back;
+	agc_event_callback_func call_back;
     
-    /* timer event */
-    char timer_set;
+	/* timer event */
+	char timer_set;
     
-    agc_rbtree_node_t  timer;
+	agc_rbtree_node_t  timer;
     
 	struct agc_event *next;
 };
@@ -65,6 +65,8 @@ AGC_DECLARE(int) agc_event_alloc_source(const char *source_name);
 AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_name);
 
 AGC_DECLARE(agc_status_t) agc_event_get_id(const char *event_name, int *event_id);
+
+AGC_DECLARE(const char *) agc_event_get_name(int event_id);
 
 AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, int source_id);
 

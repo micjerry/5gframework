@@ -1,6 +1,6 @@
 #include "mod_rabbitmq.h"
 
-static void agcmq_producer_msg_destroy(agcmq_message_t **msg)
+void agcmq_producer_msg_destroy(agcmq_message_t **msg)
 {
 	if (!msg || !*msg) return;
 	agc_safe_free((*msg)->pjson);

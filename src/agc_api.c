@@ -72,25 +72,30 @@ AGC_DECLARE(agc_api_interface_t *) agc_api_find(const char *cmd)
 
 AGC_DECLARE(agc_status_t) agc_api_execute(const char *cmd, const char *arg, agc_stream_handle_t *stream)
 {
-    char *command  = (char *)cmd;
-    char *argument = (char *)arg;
-    agc_api_interface_t *api = NULL;
-    agc_status_t status;
+	char *command  = (char *)cmd;
+	char *argument = (char *)arg;
+	agc_api_interface_t *api = NULL;
+	agc_status_t status;
     
-    assert(stream != NULL);
+	assert(stream != NULL);
 	assert(stream->data != NULL);
 	assert(stream->write_function != NULL);
     
-    if (command && (api = agc_api_find(command)) != NULL) {
-        if ((status = api->function(argument, stream)) != AGC_STATUS_SUCCESS) {
-            stream->write_function(stream, "COMMAND RETURN ERROR!\n");
-        }
-    } else {
-        status = AGC_STATUS_FALSE;
+	if (command && (api = agc_api_find(command)) != NULL) {
+		if ((status = api->function(argument, stream)) != AGC_STATUS_SUCCESS) {
+			stream->write_function(stream, "COMMAND RETURN ERROR!\n");
+		}
+	} else {
+		status = AGC_STATUS_FALSE;
 		stream->write_function(stream, "INVALID COMMAND!\n");
-    }
+	}
     
-    return status;
+	return status;
+}
+
+AGC_DECLARE(agc_status_t) agc_console_execute(char *xcmd, int rec, agc_stream_handle_t *istream)
+{
+	
 }
 
 AGC_DECLARE(void) agc_api_stand_stream(agc_stream_handle_t *stream)

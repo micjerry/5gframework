@@ -48,6 +48,8 @@ typedef struct agcmq_producer_profile_s {
 	agc_bool_t running;
 	agc_memory_pool_t *pool;
 
+	agc_time_t reset_time;
+
 	agc_queue_t *send_queue;
 	uint8_t event_list[EVENT_ID_LIMIT];
 } agcmq_producer_profile_t;
@@ -69,6 +71,8 @@ struct {
 	agc_hash_t *producer_hash;
 	agc_hash_t *consumer_hash;
 } agcmq_global;
+
+void agcmq_producer_msg_destroy(agcmq_message_t **msg)
 
 agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_infos, agcmq_conn_parameter_t *parameters, agc_memory_pool_t *pool);
 agc_status_t agcmq_producer_destroy(agcmq_producer_profile_t **profile);
