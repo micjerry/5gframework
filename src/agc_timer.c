@@ -14,7 +14,7 @@ static volatile int SYSTEM_RUNNING = 0;
 
 static volatile int SYSTEM_SHUTDOWN = 0;
 
-static agc_time_t current_time;
+static agc_time_t current_time = 0;
 
 static void agc_timer_launch_dispatch_thread();
 
@@ -75,7 +75,10 @@ AGC_DECLARE(void) agc_timer_add_timer(agc_event_t *ev, agc_msec_t timer)
 
 AGC_DECLARE(agc_time_t) agc_timer_curtime()
 {
-    return current_time;
+	if (!current_time)
+		current_time = agc_time_now();
+	
+	return current_time ;
 }
 
 static void agc_timer_launch_dispatch_thread()

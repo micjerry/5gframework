@@ -102,6 +102,8 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 								  amqp_cstring_bytes("topic"),
 								  0, //passive
 								  1, //durable
+								  0, //auto delete
+								  0, //internal
 								  amqp_empty_table);
 			
 			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Declaring exchange")) {
@@ -156,7 +158,8 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 			continue;		
 		}
 
-		state = *(consumer->conn_active);		
+		//state = *(consumer->conn_active);	
+		
 		amqp_basic_consume(state,     // state
 						   1,                               // channel
 						   queueName,                       // queue
@@ -171,6 +174,8 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 			agc_sleep(para->reconnect_interval_ms* 1000);
 			continue;
 		}
+
+		agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] consume successful.\n", consumer->name);
 
 		while (consumer->running && consumer->conn_active) {
 			amqp_rpc_reply_t res;

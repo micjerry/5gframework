@@ -1,9 +1,11 @@
 #include "mod_rabbitmq.h"
 #include <yaml.h>
 
+#define AMQP_PATH "mq_profiles"
+
 static agc_status_t agcmq_load_profile(const char *filename, 
 										char **ppname,
-										char **pptype;
+										char **pptype,
 										agcmq_connection_info_t **connection_info, 
 										agcmq_conn_parameter_t **parameter,
 										agc_memory_pool_t *pool);
@@ -25,22 +27,35 @@ agc_status_t agcmq_load_config()
 	
 	if (agc_memory_create_pool(&loop_pool) != AGC_STATUS_SUCCESS) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc dir memory failed.\n");
-		break;
+		return;
 	}
+
+	dir_path = agc_mprintf("%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, AMQP_PATH);
 	
 	if ((status = agc_dir_open(&dir, dir_path, loop_pool)) != AGC_STATUS_SUCCESS) {
 		agc_memory_destroy_pool(&loop_pool);
+		agc_safe_free(dir_path);
 		return status;
 	}
 
 	while((fname = agc_dir_next_file(dir, buffer, sizeof(buffer)))) {
 		if ((fname_ext = strrchr(fname, '.'))) {
 			if (!strcmp(fname_ext, ".yml")) {
+				char *full_filename = NULL;
+				
 				if (agc_memory_create_pool(&pool) != AGC_STATUS_SUCCESS) {
 					agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc memory failed.\n");
 					break;
 				}
-				if ((agcmq_load_profile(fname, &pname, &ptype, &conn, &para, pool) != AGC_STATUS_SUCCESS)
+
+				full_filename = agc_mprintf("%s%s%s", dir_path, AGC_PATH_SEPARATOR, fname);
+				if (!full_filename) {
+					agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc memory failed.\n");
+					agc_memory_destroy_pool(&pool);
+					break;
+				}
+				
+				if ((agcmq_load_profile(full_filename, &pname, &ptype, &conn, &para, pool) != AGC_STATUS_SUCCESS)
 					|| !pname || !ptype || !conn || !para) {
 					agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Parse file %s failed.\n", fname);
 					agc_memory_destroy_pool(&pool);
@@ -52,14 +67,17 @@ agc_status_t agcmq_load_config()
 					} else {
 						agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Unknown profile %s.\n", fname);
 						agc_memory_destroy_pool(&pool);
-						continue;
 					}
 				}
+
+				agc_safe_free(full_filename);
 			}
 		}
 	}
 
 	agc_memory_destroy_pool(&loop_pool);
+
+	agc_safe_free(dir_path);
 }
 
 agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, amqp_connection_state_t **conn, char *profile_name)
@@ -181,7 +199,7 @@ int agcmq_parse_amqp_reply(amqp_rpc_reply_t x, char const *context)
 
 static agc_status_t agcmq_load_profile(const char *filename, 
 										char **ppname,
-										char **pptype;
+										char **pptype,
 										agcmq_connection_info_t **connection_info, 
 										agcmq_conn_parameter_t **parameter,
 										agc_memory_pool_t *pool)
@@ -213,6 +231,11 @@ static agc_status_t agcmq_load_profile(const char *filename,
 
 	if (!filename)
 		return AGC_STATUS_GENERR;
+
+	para = agc_memory_alloc(pool, sizeof(*para));
+	assert(para);
+	para->delivery_timestamp = 1;
+	para->delivery_mode = 0;
 		
 	file = fopen(filename, "rb");
 	assert(file);
@@ -241,8 +264,10 @@ static agc_status_t agcmq_load_profile(const char *filename,
 					if (iskey) {
 						if (strcmp(token.data.scalar.value, "connections") == 0) {
 							blocktype = BLOCK_CONNECTION;
+							keytype = KEY_UNKOWN;
 						} else if (strcmp(token.data.scalar.value, "parameters") == 0) {
 							blocktype = BLOCK_PARAMETER;
+							keytype = KEY_UNKOWN;
 						} else if (strcmp(token.data.scalar.value, "name") == 0) {
 							blocktype = BLOCK_UNKOWN;
 							keytype = KEY_STR;
@@ -290,12 +315,21 @@ static agc_status_t agcmq_load_profile(const char *filename,
 						} else if (strcmp(token.data.scalar.value, "binding_key") == 0) {
 							keytype = KEY_STR;
 							strvalue = &para->bind_key;
+						} else if (strcmp(token.data.scalar.value, "delivery_mode") == 0) {
+							keytype = KEY_INT;
+							intvalue = &para->delivery_mode;
+						} else if (strcmp(token.data.scalar.value, "delivery_timestamp") == 0) {
+							keytype = KEY_INT;
+							intvalue = &para->delivery_timestamp;
 						} else {
+							keytype = KEY_UNKOWN;
 							agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "unknown key %s found.\n", token.data.scalar.value);
 						}
+
+						//agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "key %s found.\n", token.data.scalar.value);
 						
 					} else {
-					
+						//agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "value %s found.\n", token.data.scalar.value);
 						if (keytype == KEY_STR) {
 							*strvalue = agc_core_strdup(pool, token.data.scalar.value);
 						} else if (keytype == KEY_INT) {
@@ -320,9 +354,6 @@ static agc_status_t agcmq_load_profile(const char *filename,
 						if (!conn_header) {
 							conn_header = conn;
 						} 
-					} else if (blocktype == BLOCK_PARAMETER) {
-						para = agc_memory_alloc(pool, sizeof(*para));
-						assert(para);
 					}
 				}
 				break;
@@ -344,6 +375,10 @@ static agc_status_t agcmq_load_profile(const char *filename,
 
 	if (para->reconnect_interval_ms == 0) {
 		para->reconnect_interval_ms = 1000;
+	}
+
+	for (conn = conn_header; conn; conn = conn->next) {
+		agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "connect %s:%d  %s found.\n", conn->hostname, conn->port, conn->virtualhost);
 	}
 	
 	return AGC_STATUS_SUCCESS;

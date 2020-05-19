@@ -1,5 +1,7 @@
 #include "mod_rabbitmq.h"
 
+#define MQ_EVENT_LIMIT 10000
+
 void agcmq_producer_msg_destroy(agcmq_message_t **msg)
 {
 	if (!msg || !*msg) return;
@@ -12,7 +14,7 @@ agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_inf
 	agcmq_producer_profile_t *producer;
 	int event_numbers = 0;
 	char  *argv[EVENT_ID_LIMIT];
-	int arg, event_id;
+	int arg, event_id, x;
 	agc_threadattr_t *thd_attr = NULL;
 
 	if (!name || !conn_infos || !parameters)
@@ -46,6 +48,8 @@ agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_inf
 		agcmq_producer_destroy(&producer);
 		return AGC_STATUS_GENERR;
 	}
+
+	agc_queue_create(&producer->send_queue, MQ_EVENT_LIMIT, pool);
 
 	agc_threadattr_create(&thd_attr, producer->pool);
 	agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
@@ -131,6 +135,8 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 									  amqp_cstring_bytes(para->ex_type),
 									  0,  //passive
 									  1,  //durable
+									  0, //auto delete
+								  	  0, //internal
 									  amqp_empty_table);
 				if (!agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Declaring exchange")) {
 					agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Producer[%s] reconnect success.\n", producer->name);
@@ -172,4 +178,60 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 	agc_thread_exit(thread, AGC_STATUS_SUCCESS);
 	return NULL;
 }
+
+agc_status_t agcmq_producer_send(agcmq_producer_profile_t *producer, agcmq_message_t *msg)
+{
+	agcmq_conn_parameter_t *para;
+	amqp_connection_state_t state;
+	amqp_table_entry_t messageTableEntries[1];
+	amqp_basic_properties_t props;
+	int status;
+	
+	if (!producer->conn_active) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Producer[%s] not active.\n", producer->name);
+		return AGC_STATUS_NOT_INITALIZED;
+	}
+
+	para = producer->conn_parameter;
+	state = *(producer->conn_active);
+
+	memset(&props, 0, sizeof(amqp_basic_properties_t));
+	props.content_type = amqp_cstring_bytes(MQ_DEFAULT_CONTENT_TYPE);
+
+	if(para->delivery_mode > 0) {
+		props._flags |= AMQP_BASIC_DELIVERY_MODE_FLAG;
+		props.delivery_mode = para->delivery_mode;
+	}
+
+	if(para->delivery_timestamp) {
+		props._flags |= AMQP_BASIC_TIMESTAMP_FLAG | AMQP_BASIC_HEADERS_FLAG;
+		props.timestamp = (uint64_t)time(NULL);
+		props.headers.num_entries = 1;
+		props.headers.entries = messageTableEntries;
+		messageTableEntries[0].key = amqp_cstring_bytes("x_Liquid_MessageSentTimeStamp");
+		messageTableEntries[0].value.kind = AMQP_FIELD_KIND_TIMESTAMP;
+		messageTableEntries[0].value.value.u64 = (uint64_t)agc_timer_curtime();
+	}
+
+	status = amqp_basic_publish(
+								state,
+								1,
+								amqp_cstring_bytes(para->ex_name),
+								amqp_cstring_bytes(msg->routing_key),
+								0,
+								0,
+								&props,
+								amqp_cstring_bytes(msg->pjson));
+
+	if (status < 0) {
+		const char *errstr = amqp_error_string2(-status);
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Producer[%s] send event failed %s.\n", producer->name, errstr);
+		agcmq_connection_close(producer->conn_active);
+		producer->conn_active = NULL;
+		return AGC_STATUS_SOCKERR;
+	}
+
+	return AGC_STATUS_SUCCESS;
+}
+
 

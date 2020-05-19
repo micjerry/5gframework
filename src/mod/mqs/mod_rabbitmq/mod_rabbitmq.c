@@ -1,4 +1,4 @@
-#include <agc.h>
+#include "mod_rabbitmq.h"
 
 AGC_MODULE_LOAD_FUNCTION(mod_rabbitmq_load);
 AGC_MODULE_SHUTDOWN_FUNCTION(mod_rabbitmq_shutdown);
@@ -17,9 +17,11 @@ AGC_STANDARD_API(agcmq_load)
 
 AGC_MODULE_LOAD_FUNCTION(mod_rabbitmq_load)
 {
-	*module_interface = agc_loadable_module_create_interface(module_pool, modname);
+	
 	memset(&agcmq_global, 0, sizeof(agcmq_global));
 	agcmq_global.pool = pool;
+
+	*module_interface = agc_loadable_module_create_interface(agcmq_global.pool, modname);
 
 	agcmq_global.producer_hash = agc_hash_make(agcmq_global.pool);
 	agcmq_global.consumer_hash = agc_hash_make(agcmq_global.pool);
@@ -50,13 +52,13 @@ AGC_MODULE_SHUTDOWN_FUNCTION(mod_rabbitmq_shutdown)
 	for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.producer_hash); hi; hi = agc_hash_next(hi)) {
 		val = agc_hash_this_val(hi);
 		producer = (agcmq_producer_profile_t *) val;
-		agcmq_producer_destroy(producer);
+		agcmq_producer_destroy(&producer);
 	}
 
 	for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.consumer_hash); hi; hi = agc_hash_next(hi)) {
 		val = agc_hash_this_val(hi);
 		consumer = (agcmq_consumer_profile_t *) val;
-		agcmq_consumer_destroy(consumer);
+		agcmq_consumer_destroy(&consumer);
 	}
 		
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Mq  shutdown success.\n");
@@ -99,7 +101,7 @@ static void handle_event(void *data)
 			if (agc_queue_trypush(producer->send_queue, msg) != AGC_STATUS_SUCCESS) {
 				producer->reset_time = now + para->circuit_breaker_ms * 1000;
 				agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Message queue full.\n");
-				agcmq_producer_msg_destroy(msg);
+				agcmq_producer_msg_destroy(&msg);
 			}
 		}
 	}
