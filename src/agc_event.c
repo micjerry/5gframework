@@ -22,14 +22,14 @@ static agc_mutex_t *SOURCEID_MUTEX = NULL;
 static agc_mutex_t *EVENTSTATE_MUTEX = NULL;
 
 static agc_thread_rwlock_t *EVENT_TEMPLATES_RWLOCK = NULL;
-static char *event_templates[EVENT_ID_LIMIT + 1] = { NULL };
+static char *event_templates[EVENT_ID_LIMIT] = { NULL };
 
 static agc_queue_t **EVENT_DISPATCH_QUEUES = NULL;
 static agc_thread_t **EVENT_DISPATCH_THREADS = NULL;
 static uint8_t *EVENT_DISPATCH_QUEUE_RUNNING = NULL;
 
 static agc_thread_rwlock_t *EVENT_NODES_RWLOCK = NULL;
-static agc_event_node_t *EVENT_NODES[EVENT_ID_LIMIT + 1] = { NULL };
+static agc_event_node_t *EVENT_NODES[EVENT_ID_LIMIT] = { NULL };
 
 static void agc_event_launch_dispatch_threads();
 
@@ -115,20 +115,20 @@ AGC_DECLARE(int) agc_event_alloc_source(const char *source_name)
 
 AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_name)
 {
-    if (EVENT_ID_IS_INVALID(event_id))
-        return AGC_STATUS_GENERR;
+	if (EVENT_ID_IS_INVALID(event_id))
+		return AGC_STATUS_GENERR;
     
-    agc_thread_rwlock_wrlock(EVENT_TEMPLATES_RWLOCK);
-    if (event_templates[event_id] != NULL) {
-        agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Event id %d was alread registed.\n", event_id);
-        agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
-        return AGC_STATUS_GENERR;
-    }
+	agc_thread_rwlock_wrlock(EVENT_TEMPLATES_RWLOCK);
+	if (event_templates[event_id] != NULL) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Event id %d was alread registed.\n", event_id);
+		agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
+		return AGC_STATUS_GENERR;
+	}
     
-    event_templates[event_id] = agc_core_strdup(RUNTIME_POOL, event_name);
+	event_templates[event_id] = agc_core_strdup(RUNTIME_POOL, event_name);
     
-    agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
-    return AGC_STATUS_SUCCESS;
+	agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_get_id(const char *event_name, int *event_id)

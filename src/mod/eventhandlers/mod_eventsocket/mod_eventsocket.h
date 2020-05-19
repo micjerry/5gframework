@@ -21,7 +21,7 @@ struct event_connect_s {
     uint8_t has_event;
     uint8_t is_running;
     char *ebuf;
-    uint8_t event_list[EVENT_ID_LIMIT + 1];
+    uint8_t event_list[EVENT_ID_LIMIT];
     event_connect_t *next;
 };
 

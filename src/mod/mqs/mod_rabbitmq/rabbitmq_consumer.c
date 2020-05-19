@@ -31,6 +31,7 @@ agc_status_t agcmq_consumer_create(char *name, agcmq_connection_info_t *conn_inf
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] Successfully started.\n", consumer->name);
 	return AGC_STATUS_SUCCESS;
 }
+
 agc_status_t agcmq_consumer_destroy(agcmq_consumer_profile_t **profile)
 {
 	agc_status_t ret;
@@ -81,9 +82,10 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 	amqp_queue_declare_ok_t *recv_queue;
 	amqp_bytes_t queueName = { 0, NULL };
 
+	para = consumer->conn_parameter;
+	
 	while (consumer->running) {
 		if (!consumer->conn_active) {
-			para = consumer->conn_parameter;
 			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] reconnectiong.\n", consumer->name);
 
 			status = agcmq_connection_open(consumer->conn_infos, &consumer->conn_active, consumer->name);
@@ -94,14 +96,14 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 				continue;
 			}
 
-
 			state = *(consumer->conn_active);
 			amqp_exchange_declare(state, 1,
 								  amqp_cstring_bytes(para->ex_name),
 								  amqp_cstring_bytes("topic"),
-								  0,
-								  1,
+								  0, //passive
+								  1, //durable
 								  amqp_empty_table);
+			
 			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Declaring exchange")) {
 				agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] declaring exchange failed.\n", consumer->name);
 				agc_sleep(para->reconnect_interval_ms* 1000);
@@ -135,10 +137,10 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 
 			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] Binding command queue to exchange %s.\n", consumer->name, para->ex_name);
 
-			amqp_queue_bind(state,                   // state
-						1,                                             // channel
-						queueName,                                     // queue
-						amqp_cstring_bytes(para->ex_name),         // exchange
+			amqp_queue_bind(state,                                             // state
+						1,                                                         // channel
+						queueName,                                          // queue
+						amqp_cstring_bytes(para->ex_name),      // exchange
 						amqp_cstring_bytes(para->bind_key),      // routing key
 						amqp_empty_table);       
 
@@ -221,20 +223,11 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 			}
 
 			if (cmdfmt == COMMAND_FORMAT_PLAINTEXT) {
-				agc_stream_handle_t stream = {0};
-				agc_api_stand_stream(&stream);
-
 				snprintf(command, sizeof(command), "%.*s", (int) envelope.message.body.len, (char *) envelope.message.body.bytes);
 
 				agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] execute command %s.\n", consumer->name, command);
-				
-				if (agc_console_execute(command, 0, &stream) != AGC_STATUS_SUCCESS) {
-					agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] execute command %s failed.\n", consumer->name, command);
-				} else {
-					agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] execute command %s success.\n", consumer->name, command);
-				}
 
-				agc_safe_free(stream.data);
+				agc_parse_execute(command);
 			}
 
 			amqp_destroy_envelope(&envelope);

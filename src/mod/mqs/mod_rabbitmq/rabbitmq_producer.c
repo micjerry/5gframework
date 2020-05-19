@@ -115,8 +115,6 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 	agc_status_t status =AGC_STATUS_SUCCESS;
 	amqp_connection_state_t state;
 	agcmq_conn_parameter_t *para;
-	amqp_boolean_t passive = 0;
-	amqp_boolean_t durable = 1;
 
 	producer = (agcmq_producer_profile_t *)data;
 
@@ -131,8 +129,8 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 				amqp_exchange_declare(state, 1,
 									  amqp_cstring_bytes(para->ex_name),
 									  amqp_cstring_bytes(para->ex_type),
-									  passive,
-									  durable,
+									  0,  //passive
+									  1,  //durable
 									  amqp_empty_table);
 				if (!agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Declaring exchange")) {
 					agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Producer[%s] reconnect success.\n", producer->name);
@@ -147,6 +145,7 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 
 		if (!msg && agc_queue_trypop(producer->send_queue, (void **)&msg) != AGC_STATUS_SUCCESS) {
 			agc_yield(100000);
+			continue;
 		}
 
 		if (msg) {
