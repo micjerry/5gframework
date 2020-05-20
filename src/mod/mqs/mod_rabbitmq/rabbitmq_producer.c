@@ -16,6 +16,7 @@ agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_inf
 	char  *argv[EVENT_ID_LIMIT];
 	int arg, event_id, x;
 	agc_threadattr_t *thd_attr = NULL;
+	agcmq_connection_t *new_conn;
 
 	if (!name || !conn_infos || !parameters)
 		return AGC_STATUS_GENERR;
@@ -29,6 +30,10 @@ agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_inf
 	producer->pool = pool;
 	producer->running = 1;
 
+	new_conn = agc_memory_alloc(producer->pool, sizeof(*new_conn));
+	assert(new_conn);
+	producer->mq_conn = new_conn;
+	
 	event_numbers = agc_separate_string(parameters->event_filter, ',', argv, (sizeof(argv) / sizeof(argv[0])));
 
 	for (arg = 0; arg < event_numbers; arg++) {
@@ -43,7 +48,7 @@ agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_inf
 		}
 	}
 
-	if (agcmq_connection_open(producer->conn_infos, &producer->conn_active, producer->name) != AGC_STATUS_SUCCESS) {
+	if (agcmq_connection_open(producer->conn_infos, producer->mq_conn, producer->name) != AGC_STATUS_SUCCESS) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Can not connect to mq producer %s create failed.\n", producer->name);
 		agcmq_producer_destroy(&producer);
 		return AGC_STATUS_GENERR;
@@ -92,12 +97,11 @@ agc_status_t agcmq_producer_destroy(agcmq_producer_profile_t **profile)
 
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Producer[%s] Closing.\n", producer->name);
 
-	if (producer->conn_active) {
-		agcmq_connection_close(producer->conn_active);
+	if (agcmq_is_conn_active(producer->mq_conn)) {
+		agcmq_connection_close(producer->mq_conn);
 	}
 
 	producer->conn_infos = NULL;
-	producer->conn_active = NULL;
 
 	while (producer->send_queue && agc_queue_trypop(producer->send_queue, (void**)&msg) == AGC_STATUS_SUCCESS) {
 		agcmq_producer_msg_destroy(&msg);
@@ -117,20 +121,18 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 	agcmq_message_t *msg = NULL;
 	agcmq_producer_profile_t *producer;
 	agc_status_t status =AGC_STATUS_SUCCESS;
-	amqp_connection_state_t state;
 	agcmq_conn_parameter_t *para;
 
 	producer = (agcmq_producer_profile_t *)data;
 
 	while (producer->running) {
-		if (!producer->conn_active) {
+		if (!agcmq_is_conn_active(producer->mq_conn)) {
 			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Producer[%s] reconnectiong.\n", producer->name);
 
-			status = agcmq_connection_open(producer->conn_infos, &producer->conn_active, producer->name);
+			status = agcmq_connection_open(producer->conn_infos, producer->mq_conn, producer->name);
 			if ( status== AGC_STATUS_SUCCESS ) {
-				state = *(producer->conn_active);
 				para = producer->conn_parameter;
-				amqp_exchange_declare(state, 1,
+				amqp_exchange_declare(producer->mq_conn->state, 1,
 									  amqp_cstring_bytes(para->ex_name),
 									  amqp_cstring_bytes(para->ex_type),
 									  0,  //passive
@@ -138,7 +140,7 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 									  0, //auto delete
 								  	  0, //internal
 									  amqp_empty_table);
-				if (!agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Declaring exchange")) {
+				if (!agcmq_parse_amqp_reply(amqp_get_rpc_reply(producer->mq_conn->state), "Declaring exchange")) {
 					agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Producer[%s] reconnect success.\n", producer->name);
 					continue;
 				}
@@ -182,18 +184,16 @@ void *agcmq_producer_thread(agc_thread_t *thread, void *data)
 agc_status_t agcmq_producer_send(agcmq_producer_profile_t *producer, agcmq_message_t *msg)
 {
 	agcmq_conn_parameter_t *para;
-	amqp_connection_state_t state;
 	amqp_table_entry_t messageTableEntries[1];
 	amqp_basic_properties_t props;
 	int status;
 	
-	if (!producer->conn_active) {
+	if (!agcmq_is_conn_active(producer->mq_conn)) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Producer[%s] not active.\n", producer->name);
 		return AGC_STATUS_NOT_INITALIZED;
 	}
-
+	
 	para = producer->conn_parameter;
-	state = *(producer->conn_active);
 
 	memset(&props, 0, sizeof(amqp_basic_properties_t));
 	props.content_type = amqp_cstring_bytes(MQ_DEFAULT_CONTENT_TYPE);
@@ -213,8 +213,7 @@ agc_status_t agcmq_producer_send(agcmq_producer_profile_t *producer, agcmq_messa
 		messageTableEntries[0].value.value.u64 = (uint64_t)agc_timer_curtime();
 	}
 
-	status = amqp_basic_publish(
-								state,
+	status = amqp_basic_publish(producer->mq_conn->state,
 								1,
 								amqp_cstring_bytes(para->ex_name),
 								amqp_cstring_bytes(msg->routing_key),
@@ -226,8 +225,7 @@ agc_status_t agcmq_producer_send(agcmq_producer_profile_t *producer, agcmq_messa
 	if (status < 0) {
 		const char *errstr = amqp_error_string2(-status);
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Producer[%s] send event failed %s.\n", producer->name, errstr);
-		agcmq_connection_close(producer->conn_active);
-		producer->conn_active = NULL;
+		agcmq_connection_close(producer->mq_conn);
 		return AGC_STATUS_SOCKERR;
 	}
 

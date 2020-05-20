@@ -27,6 +27,13 @@ struct agcmq_connection_info_s {
 	agcmq_connection_info_t *next;
 };
 
+typedef struct agcmq_connection_s agcmq_connection_t;
+
+struct agcmq_connection_s {
+	agc_bool_t active;
+	amqp_connection_state_t state;
+};
+
 typedef struct agcmq_conn_parameter_s agcmq_conn_parameter_t;
 struct agcmq_conn_parameter_s {
 	char *ex_name;
@@ -45,7 +52,7 @@ typedef struct agcmq_producer_profile_s {
 	char *name;
 	agcmq_conn_parameter_t *conn_parameter;
 	agcmq_connection_info_t *conn_infos;
-	amqp_connection_state_t *conn_active;
+	agcmq_connection_t *mq_conn;
 	
 	agc_thread_t *producer_thread;
 	agc_bool_t running;
@@ -61,7 +68,7 @@ typedef struct agcmq_consumer_profile_s {
 	char *name;
 	agcmq_conn_parameter_t *conn_parameter;
 	agcmq_connection_info_t *conn_infos;
-	amqp_connection_state_t *conn_active;	
+	agcmq_connection_t *mq_conn;	
 
 	agc_thread_t *consumer_thread;
 	agc_bool_t running;
@@ -87,8 +94,13 @@ agc_status_t agcmq_consumer_destroy(agcmq_consumer_profile_t **profile);
 void *agcmq_consumer_thread(agc_thread_t *thread, void *data);
 
 int agcmq_parse_amqp_reply(amqp_rpc_reply_t x, char const *context);
-agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, amqp_connection_state_t **conn, char *profile_name);
-void agcmq_connection_close(amqp_connection_state_t *conn);
+agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos,  agcmq_connection_t *conn, char *profile_name);
+void agcmq_connection_close(agcmq_connection_t *conn);
+
+static inline agc_bool_t agcmq_is_conn_active(agcmq_connection_t *conn)
+{
+	return conn->active;
+}
 
 agc_status_t agcmq_load_config();
 

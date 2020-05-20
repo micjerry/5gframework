@@ -1,7 +1,8 @@
 #include "mod_rabbitmq.h"
 #include <yaml.h>
 
-#define AMQP_PATH "mq_profiles"
+#define  AGCMQ_CFG_PATH "mq_profiles"
+#define AGCMQ_MAX_FRAME 131072
 
 static agc_status_t agcmq_load_profile(const char *filename, 
 										char **ppname,
@@ -30,7 +31,7 @@ agc_status_t agcmq_load_config()
 		return;
 	}
 
-	dir_path = agc_mprintf("%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, AMQP_PATH);
+	dir_path = agc_mprintf("%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, AGCMQ_CFG_PATH);
 	
 	if ((status = agc_dir_open(&dir, dir_path, loop_pool)) != AGC_STATUS_SUCCESS) {
 		agc_memory_destroy_pool(&loop_pool);
@@ -80,18 +81,24 @@ agc_status_t agcmq_load_config()
 	agc_safe_free(dir_path);
 }
 
-agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, amqp_connection_state_t **conn, char *profile_name)
+agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, agcmq_connection_t *conn, char *profile_name)
 {
-	int channel_max = 0;
-	int frame_max = 131072;
-	amqp_connection_state_t new_conn;
 	amqp_socket_t *socket = NULL;
 	agcmq_connection_info_t *conn_info;
 	int amqp_status = -1;
 	amqp_rpc_reply_t reply;
+	amqp_connection_state_t oldConnection;
 
-	new_conn = amqp_new_connection();
-	socket = amqp_tcp_socket_new(new_conn);
+	if (!conn_infos || !conn)
+		return AGC_STATUS_GENERR;
+
+	oldConnection = conn->state;
+	if (oldConnection) {
+		amqp_destroy_connection(oldConnection);
+	}
+	
+	conn->state= amqp_new_connection();
+	socket = amqp_tcp_socket_new(conn->state);
 
 	if (!socket) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Create amqp socket failed.\n");
@@ -117,40 +124,39 @@ agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, amqp_con
 
 	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Profile[%s] connect amqp %s:%d success.\n", profile_name, conn_info->hostname, conn_info->port);
 
-	reply = amqp_login(new_conn, conn_info->virtualhost, 0, 131072, 0, AMQP_SASL_METHOD_PLAIN,
+	reply = amqp_login(conn->state, conn_info->virtualhost, 0, AGCMQ_MAX_FRAME, 0, AMQP_SASL_METHOD_PLAIN,
                                conn_info->username, conn_info->password);
 
 	if (agcmq_parse_amqp_reply(reply, "Logining in")) {
-		agcmq_connection_close(&new_conn);
-		*conn = NULL;
+		agcmq_connection_close(conn);
 		return AGC_STATUS_GENERR;
 	}
 	
-	*conn = &new_conn;
-
-	amqp_channel_open(new_conn, 1);
+	amqp_channel_open(conn->state, 1);
 	
 	if (agcmq_parse_amqp_reply(reply, "Openning channel")) {
 		return AGC_STATUS_GENERR;
 	}
 
+	conn->active = AGC_TRUE;
+
 	return AGC_STATUS_SUCCESS;
 }
 
-void agcmq_connection_close(amqp_connection_state_t *pconn)
+void agcmq_connection_close(agcmq_connection_t *pconn)
 {
 	int status = 0;
-	amqp_connection_state_t conn;
 	
 	if (pconn != NULL) {
-		conn = *pconn;
-		agcmq_parse_amqp_reply(amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS), "Closing channel");
-		agcmq_parse_amqp_reply(amqp_connection_close(conn, AMQP_REPLY_SUCCESS), "Closing connection");
+		agcmq_parse_amqp_reply(amqp_channel_close(pconn->state, 1, AMQP_REPLY_SUCCESS), "Closing channel");
+		agcmq_parse_amqp_reply(amqp_connection_close(pconn->state, AMQP_REPLY_SUCCESS), "Closing connection");
 
-		if ((status = amqp_destroy_connection(conn))) {
+		if ((status = amqp_destroy_connection(pconn->state))) {
 			const char *errstr = amqp_error_string2(-status);
 			agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Error destroying amqp connection: %s\n", errstr);
 		}
+
+		pconn->active = AGC_FALSE;
 	}
 }
 

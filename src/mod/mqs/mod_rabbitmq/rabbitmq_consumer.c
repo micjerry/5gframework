@@ -4,6 +4,7 @@ agc_status_t agcmq_consumer_create(char *name, agcmq_connection_info_t *conn_inf
 {
 	agcmq_consumer_profile_t *consumer;
 	agc_threadattr_t *thd_attr = NULL;
+	agcmq_connection_t *new_conn = NULL;
 
 	if (!name || !conn_infos || !parameters)
 		return AGC_STATUS_GENERR;
@@ -16,6 +17,10 @@ agc_status_t agcmq_consumer_create(char *name, agcmq_connection_info_t *conn_inf
 	consumer->conn_parameter = parameters;
 	consumer->pool = pool;
 	consumer->running = 1;
+
+	new_conn = agc_memory_alloc(consumer->pool , sizeof(*new_conn));
+	assert(new_conn);
+	consumer->mq_conn = new_conn;
 
 	agc_threadattr_create(&thd_attr, consumer->pool);
 	agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
@@ -57,12 +62,11 @@ agc_status_t agcmq_consumer_destroy(agcmq_consumer_profile_t **profile)
 
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] Closing.\n", consumer->name);
 
-	if (consumer->conn_active) {
-		agcmq_connection_close(consumer->conn_active);
+	if (agcmq_is_conn_active(consumer->mq_conn)) {
+		agcmq_connection_close(consumer->mq_conn);
 	}
 
 	consumer->conn_infos = NULL;
-	consumer->conn_active = NULL;	
 
 	if (pool) {
 		agc_memory_destroy_pool(&pool);
@@ -77,7 +81,6 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 {
 	agcmq_consumer_profile_t *consumer = (agcmq_consumer_profile_t *)data;
 	agc_status_t status =AGC_STATUS_SUCCESS;
-	amqp_connection_state_t state;
 	agcmq_conn_parameter_t *para;
 	amqp_queue_declare_ok_t *recv_queue;
 	amqp_bytes_t queueName = { 0, NULL };
@@ -85,10 +88,10 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 	para = consumer->conn_parameter;
 	
 	while (consumer->running) {
-		if (!consumer->conn_active) {
+		if (!agcmq_is_conn_active(consumer->mq_conn)) {
 			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] reconnectiong.\n", consumer->name);
 
-			status = agcmq_connection_open(consumer->conn_infos, &consumer->conn_active, consumer->name);
+			status = agcmq_connection_open(consumer->conn_infos, consumer->mq_conn, consumer->name);
 
 			if (status != AGC_STATUS_SUCCESS) {
 				agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] failed to connect.\n", consumer->name);
@@ -96,8 +99,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 				continue;
 			}
 
-			state = *(consumer->conn_active);
-			amqp_exchange_declare(state, 1,
+			amqp_exchange_declare(consumer->mq_conn->state, 1,
 								  amqp_cstring_bytes(para->ex_name),
 								  amqp_cstring_bytes("topic"),
 								  0, //passive
@@ -106,7 +108,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 								  0, //internal
 								  amqp_empty_table);
 			
-			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Declaring exchange")) {
+			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(consumer->mq_conn->state), "Declaring exchange")) {
 				agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] declaring exchange failed.\n", consumer->name);
 				agc_sleep(para->reconnect_interval_ms* 1000);
 				continue;
@@ -114,13 +116,13 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 
 			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] reconnect success.\n", consumer->name);
 
-			recv_queue = amqp_queue_declare(state, // state
+			recv_queue = amqp_queue_declare(consumer->mq_conn->state, // state
 										1,                           // channel
 										amqp_empty_bytes, // queue name
 										0, 0,                        // passive, durable
 										0, 1,                        // exclusive, auto-delete
 										amqp_empty_table);
-			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Declaring queue"))  {
+			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(consumer->mq_conn->state), "Declaring queue"))  {
 				agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] declaring queue failed.\n", consumer->name);
 				agc_sleep(para->reconnect_interval_ms* 1000);
 				continue;
@@ -139,17 +141,16 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 
 			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] Binding command queue to exchange %s.\n", consumer->name, para->ex_name);
 
-			amqp_queue_bind(state,                                             // state
+			amqp_queue_bind(consumer->mq_conn->state,                                             // state
 						1,                                                         // channel
 						queueName,                                          // queue
 						amqp_cstring_bytes(para->ex_name),      // exchange
 						amqp_cstring_bytes(para->bind_key),      // routing key
 						amqp_empty_table);       
 
-			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Binding queue"))  {
+			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(consumer->mq_conn->state), "Binding queue"))  {
 				agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] binding queue failed.\n", consumer->name);
-				agcmq_connection_close(consumer->conn_active);
-				consumer->conn_active = NULL;
+				agcmq_connection_close(consumer->mq_conn);
 				agc_sleep(para->reconnect_interval_ms* 1000);
 				continue;
 			}
@@ -157,27 +158,24 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] Amqp reconnect successful- connected.\n", consumer->name);
 			continue;		
 		}
-
-		//state = *(consumer->conn_active);	
 		
-		amqp_basic_consume(state,     // state
+		amqp_basic_consume(consumer->mq_conn->state,     // state
 						   1,                               // channel
 						   queueName,                       // queue
 						   amqp_empty_bytes,                // command tag
 						   0, 1, 0,                         // no_local, no_ack, exclusive
 						   amqp_empty_table);               // args
 						   
-		if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(state), "Consuming command"))  {
+		if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(consumer->mq_conn->state), "Consuming command"))  {
 			agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] consuming command failed.\n", consumer->name);
-			agcmq_connection_close(consumer->conn_active);
-			consumer->conn_active = NULL;
+			agcmq_connection_close(consumer->mq_conn);
 			agc_sleep(para->reconnect_interval_ms* 1000);
 			continue;
 		}
 
 		agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] consume successful.\n", consumer->name);
 
-		while (consumer->running && consumer->conn_active) {
+		while (consumer->running && agcmq_is_conn_active(consumer->mq_conn)) {
 			amqp_rpc_reply_t res;
 			amqp_envelope_t envelope;
 			char command[1024];
@@ -186,15 +184,15 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 				COMMAND_FORMAT_PLAINTEXT
 			} cmdfmt = COMMAND_FORMAT_PLAINTEXT;
 
-			amqp_maybe_release_buffers(state);
+			amqp_maybe_release_buffers(consumer->mq_conn->state);
 
-			res = amqp_consume_message(state, &envelope, NULL, 0);
+			res = amqp_consume_message(consumer->mq_conn->state, &envelope, NULL, 0);
 			
 			if (res.reply_type == AMQP_RESPONSE_LIBRARY_EXCEPTION) {
 				if (res.library_error == AMQP_STATUS_UNEXPECTED_STATE) {
 					/* Unexpected frame. Discard it then continue */
 					amqp_frame_t decoded_frame;
-					amqp_simple_wait_frame(state, &decoded_frame);
+					amqp_simple_wait_frame(consumer->mq_conn->state, &decoded_frame);
 				}
 
 				if (res.library_error == AMQP_STATUS_SOCKET_ERROR) {
@@ -241,8 +239,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 		amqp_bytes_free(queueName);
 		queueName.bytes = NULL;
 
-		agcmq_connection_close(consumer->conn_active);
-		consumer->conn_active = NULL;
+		agcmq_connection_close(consumer->mq_conn);
 
 		if (consumer->running) {
 			agc_yield(1000000);

@@ -1,6 +1,8 @@
 #ifndef AGC_CACHE_H
 #define AGC_CACHE_H
 
+#include <agc.h>
+
 #define AGC_NULL_EXPIRE 0
 
 struct keys_s {
