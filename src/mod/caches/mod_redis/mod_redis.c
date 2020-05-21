@@ -95,6 +95,7 @@ static void release_context(agc_redis_connection_t *connection);
 
 static void get_strvalue(redisReply *reply, char **result,  int *len);
 static void get_intvalue(redisReply *reply, int *result);
+static void log_error(redisReply *reply);
 
 static agc_status_t agc_redis_multireplies(agc_redis_connection_t *connection, int replies);
 static redisReply *agc_redis_hashargv(agc_redis_connection_t *connection, const char *cmd, const char *tablename, keys_t *keys, keyvalues_t *keyvalues);
@@ -143,15 +144,21 @@ static agc_status_t agc_cache_redis_set(const char *key, const char *value, int 
 		return status;
 	}
 
-	redisClusterAppendCommand(connection->cc, "SET %s %s",  key, value);
+	if (redisClusterAppendCommand(connection->cc, "SET %s %s",  key, value) != REDIS_OK)  {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "redis append command failed %s.\n", connection->cc->errstr);
+		goto end;
+	}
 
 	if (expires > 0) {
 		cmds++;
-		redisClusterAppendCommand(connection->cc, "EXPIRE %s %d", key, expires);
+		if (redisClusterAppendCommand(connection->cc, "EXPIRE %s %d", key, expires) != REDIS_OK) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "redis append command failed %s.\n", connection->cc->errstr);
+		}
 	}
 
 	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "redis refresh.\n");
-	
+
+end:
 	status = agc_redis_multireplies(connection, cmds);
 	
 	free_connection(connection);
@@ -180,6 +187,8 @@ static agc_status_t agc_cache_redis_get(const char *key, char **result, int *len
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
 		get_strvalue(reply, result, len);
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -204,6 +213,8 @@ static agc_status_t agc_cache_redis_delete(const char *key)
 
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -261,6 +272,7 @@ static agc_status_t agc_cache_redis_get_pipeline(keys_t *keys, keyvalues_t **key
 		redisClusterGetReply(connection->cc, (void **)&reply);
 		if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
 			status = AGC_STATUS_GENERR;
+			log_error(reply);
 			freeReplyObject(reply);
 			break;
 		}
@@ -341,6 +353,8 @@ static agc_status_t agc_cache_redis_expire(const char *key, int expires)
 
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -370,6 +384,8 @@ static agc_status_t agc_cache_redis_incr(const char *key, int *value)
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
 		get_intvalue(reply, value);
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -398,6 +414,8 @@ static agc_status_t agc_cache_redis_decr(const char *key, int *value)
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
 		get_intvalue(reply, value);
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -421,10 +439,16 @@ static agc_status_t agc_cache_redis_hashset(const char *tablename, const char *k
 
 	reply = redisClusterCommand(connection->cc, "HSET %s %s %s", tablename, key, value);
 
+	if (reply == NULL) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "hset return null %s.\n", connection->cc->errstr);
+	}
+
 	free_connection(connection);
 
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -452,6 +476,8 @@ static agc_status_t agc_cache_redis_hashget(const char *tablename, const char *k
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		get_strvalue(reply, value, len);
 		status = AGC_STATUS_SUCCESS;
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -479,6 +505,8 @@ static agc_status_t agc_cache_redis_hashmset(const char *tablename, keyvalues_t 
 
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -512,6 +540,7 @@ static agc_status_t agc_cache_redis_hashmget(const char *tablename, keys_t *keys
 
 	if (!reply || ( reply->type == REDIS_REPLY_ERROR) || (reply->type != REDIS_REPLY_ARRAY)) {
 		freeReplyObject(reply);
+		log_error(reply);
 		return status;
 	}
 
@@ -562,6 +591,8 @@ static agc_status_t agc_cache_redis_hashdel(const char *tablename, keys_t *keys)
 
 	if (reply != NULL && reply->type != REDIS_REPLY_ERROR) {
 		status = AGC_STATUS_SUCCESS;
+	} else {
+		log_error(reply);
 	}
 
 	freeReplyObject(reply);
@@ -787,9 +818,10 @@ static agc_status_t create_context(agc_redis_connection_t *connection)
 	cc = redisClusterContextInit();
 	if (cc) {
 		redisClusterSetOptionAddNodes(cc, redis_addrs);
+		redisClusterSetOptionRouteUseSlots(cc);
 		redisClusterConnect2(cc);
 		if (cc->err) {
-			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Create redis context failed %s.\n", redis_addrs);
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Create redis context failed %s.\n", cc->errstr);
 			connection->connected = 0;
 			connection->cc = NULL;
 			connection->connect_time = next_connect_time();
@@ -858,10 +890,20 @@ static agc_status_t agc_redis_multireplies(agc_redis_connection_t *connection, i
 
 	assert(connection);
 	for (i = 0; i < replies; i++) {
-		redisClusterGetReply(connection->cc,  (void **)&reply);
+		if (redisClusterGetReply(connection->cc,  (void **)&reply) != REDIS_OK) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "redis get reply failed %s.\n", connection->cc->err);
+			status = AGC_STATUS_GENERR;
+			break;
+		}
 
-		if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
-			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "redis get reply failed.\n");
+		if (reply == NULL) {
+			status = AGC_STATUS_GENERR;
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "redis no reply.\n");
+			break;
+		}
+
+		if (reply->type == REDIS_REPLY_ERROR) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "redis get reply failed %s.\n", reply->str);
 			status = AGC_STATUS_GENERR;
 			freeReplyObject(reply);
 			break;
@@ -958,4 +1000,16 @@ static redisReply *agc_redis_hashargv(agc_redis_connection_t *connection, const 
 	agc_safe_free(argvlen);	
 
 	return reply;
+}
+
+static void log_error(redisReply *reply)
+{
+	if (!reply) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "reply is null.\n");
+		return;
+	}
+
+	if (reply->type == REDIS_REPLY_ERROR) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "reply error %s.\n", reply->str);
+	}
 }

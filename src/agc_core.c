@@ -246,20 +246,22 @@ AGC_DECLARE(void) agc_os_yield(void)
 
 AGC_DECLARE(agc_status_t) agc_core_modload(const char **err)
 {
-    if (runtime.runlevel > 1) {
+	if (runtime.runlevel > 1) {
 		return AGC_STATUS_SUCCESS;
 	}
-    
-    runtime.runlevel++;
-    
-    if (agc_loadable_module_init() != AGC_STATUS_SUCCESS) {
+
+	runtime.runlevel++;
+
+	agc_core_set_signal_handlers();
+	if (agc_loadable_module_init() != AGC_STATUS_SUCCESS) {
 		*err = "Cannot load modules";
 		agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "Error: %s\n", *err);
 		return AGC_STATUS_GENERR;
 	}
+
+	agc_core_set_signal_handlers();
     
-    return AGC_STATUS_SUCCESS;
-    
+	return AGC_STATUS_SUCCESS;  
 }
 
 AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void *obj, agc_memory_pool_t *pool)
@@ -314,4 +316,44 @@ AGC_DECLARE(const char *) agc_core_get_hostname(void)
 	return runtime.hostname;
 }
 
+#ifdef TRAP_BUS
+static void handle_SIGBUS(int sig)
+{
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Sig BUS!.\n");
+	return;
+}
+#endif
+
+static void handle_SIGHUP(int sig)
+{
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Sig HUP!.\n");
+	return;
+}
+
+AGC_DECLARE(void) agc_core_set_signal_handlers(void)
+{
+	signal(SIGINT, SIG_IGN);
+#ifdef SIGPIPE
+	signal(SIGPIPE, SIG_IGN);
+#endif
+#ifdef SIGALRM
+	signal(SIGALRM, SIG_IGN);
+#endif
+#ifdef SIGQUIT
+	signal(SIGQUIT, SIG_IGN);
+#endif
+#ifdef SIGPOLL
+	signal(SIGPOLL, SIG_IGN);
+#endif
+#ifdef SIGIO
+	signal(SIGIO, SIG_IGN);
+#endif
+#ifdef TRAP_BUS
+	signal(SIGBUS, handle_SIGBUS);
+#endif
+#ifdef SIGUSR1
+	signal(SIGUSR1, handle_SIGHUP);
+#endif
+	signal(SIGHUP, handle_SIGHUP);	
+}
 

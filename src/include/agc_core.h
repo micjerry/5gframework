@@ -66,5 +66,7 @@ AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void
 AGC_DECLARE(agc_status_t) agc_core_modload(const char **err);
 
 AGC_DECLARE(const char *) agc_core_get_hostname(void);
+
+AGC_DECLARE(void) agc_core_set_signal_handlers(void);
                                              
 #endif

@@ -411,7 +411,8 @@ AC_CONFIG_FILES([Makefile
         src/mod/caches/mod_redis/Makefile
         src/mod/dbs/mod_sqlite/Makefile
         src/mod/mqs/mod_rabbitmq/Makefile
-        src/mod/eventhandlers/mod_eventsocket/Makefile])
+        src/mod/eventhandlers/mod_eventsocket/Makefile
+        src/mod/tests/mod_test/Makefile])
 AC_OUTPUT
 
 echo 
