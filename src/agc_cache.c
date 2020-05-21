@@ -132,10 +132,15 @@ AGC_DECLARE(agc_status_t) agc_cache_hashdel(const char *tablename, keys_t *keys)
 	return cache_actions->agc_cache_hashdel_func(tablename, keys);
 }
 
-AGC_DECLARE(void)  agc_cache_free_keyvalues(keyvalues_t *keyvalues)
+AGC_DECLARE(void)  agc_cache_free_keyvalues(keyvalues_t **keyvalues)
 {
-	keyvalues_t *iter = keyvalues;
+	keyvalues_t *iter = NULL;
 	keyvalues_t *current = NULL;
+
+	if (!keyvalues)
+		return;
+
+	iter = *keyvalues;
 
 	while (iter) {
 		current = iter;
@@ -145,12 +150,19 @@ AGC_DECLARE(void)  agc_cache_free_keyvalues(keyvalues_t *keyvalues)
 		agc_safe_free(current->value);
 		agc_safe_free(current);
 	}
+
+	*keyvalues = NULL;
 }
 
-AGC_DECLARE(void) agc_cache_free_keys(keys_t *keys)
+AGC_DECLARE(void) agc_cache_free_keys(keys_t **keys)
 {
-	keys_t *iter = keys;
+	keys_t *iter = NULL;
 	keys_t *current = NULL;	
+
+	if (!keys)
+		return;
+
+	iter = *keys;
 
 	while (iter) {
 		current = iter;
@@ -158,6 +170,8 @@ AGC_DECLARE(void) agc_cache_free_keys(keys_t *keys)
 
 		agc_safe_free(current->key);
 		agc_safe_free(current);
-	}	
+	}
+	
+	*keys = NULL;
 }
 

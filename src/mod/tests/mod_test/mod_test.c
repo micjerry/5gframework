@@ -26,11 +26,14 @@ AGC_MODULE_LOAD_FUNCTION(mod_test_load)
 	agc_api_register("test", "test API", "syntax", test_api_main);
 
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Test init success.\n");
+
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_MODULE_SHUTDOWN_FUNCTION(mod_test_shutdown)
 {
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Test shutdown success.\n");
+	return AGC_STATUS_SUCCESS;
 }
 
 agc_status_t test_main_real(const char *cmd, agc_stream_handle_t *stream)
@@ -49,14 +52,15 @@ agc_status_t test_main_real(const char *cmd, agc_stream_handle_t *stream)
 
 	if (argc && argv[0]) {
 		for (i = 0; i < TEST_API_SIZE; i++) {
-			if (strcasecmp(argv[0], test_api_commands[i]) == 0) {
+			if (strcasecmp(argv[0], test_api_commands[i].pname) == 0) {
 				test_api_func pfunc = test_api_commands[i].func;
 				int sub_argc = argc - 1;
-				char **sub_argv = &argv[1];
-				
-				if (pfunc(stream, sub_argc, sub_argv) != AGC_STATUS_SUCCESS) {
-					stream->write_function(stream, "%s %s", test_api_commands[i].pcommand, test_api_commands[i].psyntax);
-				}
+				char **sub_argv = NULL;
+
+				if (argc > 1)
+					sub_argv = &argv[1];
+
+				pfunc(stream, sub_argc, sub_argv);
 
 				found = 1;
 				break;

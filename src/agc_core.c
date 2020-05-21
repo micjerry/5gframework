@@ -298,8 +298,8 @@ AGC_DECLARE(void) agc_cond_next(void)
 
 AGC_DECLARE(void) agc_core_runtime_loop(void)
 {
-    runtime.running = 1;
-    while (runtime.running) {
+	runtime.running = 1;
+	while (runtime.running) {
 		agc_yield(1000000);
 	}
 }

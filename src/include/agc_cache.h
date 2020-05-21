@@ -68,8 +68,8 @@ typedef struct {
 
 AGC_DECLARE(void) agc_cache_register_impl(agc_cache_actions_t *actions);
 
-AGC_DECLARE(void)  agc_cache_free_keyvalues(keyvalues_t *keyvalues);
+AGC_DECLARE(void)  agc_cache_free_keyvalues(keyvalues_t **keyvalues);
 
-AGC_DECLARE(void) agc_cache_free_keys(keys_t *keys);
+AGC_DECLARE(void) agc_cache_free_keys(keys_t **keys);
 
 #endif

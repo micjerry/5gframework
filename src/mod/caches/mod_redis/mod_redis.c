@@ -150,6 +150,8 @@ static agc_status_t agc_cache_redis_set(const char *key, const char *value, int 
 		redisClusterAppendCommand(connection->cc, "EXPIRE %s %d", key, expires);
 	}
 
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "redis refresh.\n");
+	
 	status = agc_redis_multireplies(connection, cmds);
 	
 	free_connection(connection);
@@ -859,6 +861,7 @@ static agc_status_t agc_redis_multireplies(agc_redis_connection_t *connection, i
 		redisClusterGetReply(connection->cc,  (void **)&reply);
 
 		if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "redis get reply failed.\n");
 			status = AGC_STATUS_GENERR;
 			freeReplyObject(reply);
 			break;

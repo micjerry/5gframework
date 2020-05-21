@@ -204,10 +204,14 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
 		char *arg = NULL;
 		strip_cr(api_cmd);
         
-		if (!(acs.console_execute = agc_true(console_execute))) {
+		/*if (!(acs.console_execute = agc_true(console_execute))) {
 			if ((arg = strchr(api_cmd, ' '))) {
 				*arg++ = '\0';
 			}
+		} */
+
+		if ((arg = strchr(api_cmd, ' '))) {
+			*arg++ = '\0';
 		}
         
 		acs.conn = conn;
@@ -308,7 +312,7 @@ static void *api_exec(agc_thread_t *thread, void *obj)
 	agc_api_stand_stream(&stream);
     
 	/*if (acs->console_execute) {
-        //TODO
+		status = 
 	} else {
 		status = agc_api_execute(acs->api_cmd, acs->arg, &stream);
 	}*/

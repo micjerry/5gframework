@@ -2,3 +2,6 @@ modules:
     - name    : mod_logfile
     - name    : mod_epoll
     - name    : mod_eventsocket
+    - name    : mod_redis
+    - name    : mod_rabbitmq
+    - name    : mod_test
