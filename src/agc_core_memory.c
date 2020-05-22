@@ -12,35 +12,35 @@ static agc_thread_t *pool_thread_p = NULL;
 
 static void *pool_thread(agc_thread_t *thread, void *obj)
 {
-    memory_manager.pool_thread_running = 1;
-    while (memory_manager.pool_thread_running == 1) {
-        int len = agc_queue_size(memory_manager.pool_queue);
-        if (len) {
-            int x = len, done = 0;
-            agc_yield(1000000);
-            while (x > 0) { 
-                void *pop = NULL;
-                if (agc_queue_pop(memory_manager.pool_queue, &pop) != AGC_STATUS_SUCCESS || !pop) {
+	memory_manager.pool_thread_running = 1;
+	while (memory_manager.pool_thread_running == 1) {
+		int len = agc_queue_size(memory_manager.pool_queue);
+		if (len) {
+			int x = len, done = 0;
+			agc_yield(1000000);
+			while (x > 0) { 
+				void *pop = NULL;
+				if (agc_queue_pop(memory_manager.pool_queue, &pop) != AGC_STATUS_SUCCESS || !pop) {
 					done = 1;
 					break;
 				}
-                apr_pool_destroy(pop);
-                x--;
-            }
+				apr_pool_destroy(pop);
+				x--;
+			}
             
-            if (done) {
-                break;
-            }
-        } else {
-            agc_yield(1000000);
-        }
+			if (done) {
+				break;
+			}
+		} else {
+			agc_yield(1000000);
+        	}
     }
     
-    void *pop = NULL;
-    while (agc_queue_trypop(memory_manager.pool_queue, &pop) == AGC_STATUS_SUCCESS && pop) {
-        apr_pool_destroy(pop);
-        pop = NULL;
-    }
+	void *pop = NULL;
+	while (agc_queue_trypop(memory_manager.pool_queue, &pop) == AGC_STATUS_SUCCESS && pop) {
+		apr_pool_destroy(pop);
+		pop = NULL;
+	}
                 
     memory_manager.pool_thread_running = 0;
     
@@ -70,7 +70,6 @@ agc_memory_pool_t *agc_core_memory_init(void)
 	}
     
 	apr_allocator_mutex_set(my_allocator, my_mutex);
-	//apr_pool_mutex_set(memory_manager.memory_pool, my_mutex);
 	apr_allocator_owner_set(my_allocator, memory_manager.memory_pool);
 	apr_pool_tag(memory_manager.memory_pool, "core_pool");  
 
@@ -96,18 +95,18 @@ AGC_DECLARE(void) agc_memory_pool_tag(agc_memory_pool_t *pool, const char *tag)
 
 AGC_DECLARE(agc_status_t) agc_memory_destroy_pool(agc_memory_pool_t **pool)
 {
-    agc_assert(pool != NULL);
+	agc_assert(pool != NULL);
 
-    if (*pool == NULL) 
-        return AGC_STATUS_SUCCESS;
+	if (*pool == NULL) 
+		return AGC_STATUS_SUCCESS;
 
-    if ((memory_manager.pool_thread_running != 1) || (agc_queue_push(memory_manager.pool_queue, *pool) != AGC_STATUS_SUCCESS)) {
-        apr_pool_destroy(*pool);
-    }
+	if ((memory_manager.pool_thread_running != 1) || (agc_queue_push(memory_manager.pool_queue, *pool) != AGC_STATUS_SUCCESS)) {
+		apr_pool_destroy(*pool);
+	}
 
     *pool = NULL;
 
-    return AGC_STATUS_SUCCESS;
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_memory_create_pool(agc_memory_pool_t **pool)

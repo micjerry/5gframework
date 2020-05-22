@@ -332,10 +332,13 @@ static void handle_SIGHUP(int sig)
 
 AGC_DECLARE(void) agc_core_set_signal_handlers(void)
 {
+	//sigaction(SIGPIPE, &(struct sigaction){SIG_IGN}, NULL);
 	signal(SIGINT, SIG_IGN);
 #ifdef SIGPIPE
-	signal(SIGPIPE, SIG_IGN);
-#endif
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Can not handle SIGPIPE .\n");
+	}
+#endif 
 #ifdef SIGALRM
 	signal(SIGALRM, SIG_IGN);
 #endif

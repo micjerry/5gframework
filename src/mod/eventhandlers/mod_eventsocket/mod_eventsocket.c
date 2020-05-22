@@ -88,91 +88,91 @@ AGC_MODULE_SHUTDOWN_FUNCTION(mod_eventsocket_shutdown)
 
 AGC_MODULE_RUNTIME_FUNCTION(mod_eventsocket_runtime)
 {
-    agc_memory_pool_t *pool = NULL, *connection_pool = NULL;
-    agc_status_t status;
-    agc_sockaddr_t *sa;
-    agc_socket_t *new_socket = NULL;
-    event_connect_t *new_connection;
+	agc_memory_pool_t *pool = NULL, *connection_pool = NULL;
+	agc_status_t status;
+	agc_sockaddr_t *sa;
+	agc_socket_t *new_socket = NULL;
+	event_connect_t *new_connection;
     
-    while (!profile.done) {
-        if (agc_memory_create_pool(&pool) != AGC_STATUS_SUCCESS) {
-            agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Memory alloc failed\n");
-            profile.done = 1;
-            break;
-        }
+	while (!profile.done) {
+		if (agc_memory_create_pool(&pool) != AGC_STATUS_SUCCESS) {
+			agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Memory alloc failed\n");
+			profile.done = 1;
+			break;
+		}
     
-        if (agc_sockaddr_info_get(&sa, profile.ip, AGC_UNSPEC, profile.port, 0, pool) != AGC_STATUS_SUCCESS) {
-            agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Get addr failed\n");
-            profile.done = 1;
-            break;
-        }
+		if (agc_sockaddr_info_get(&sa, profile.ip, AGC_UNSPEC, profile.port, 0, pool) != AGC_STATUS_SUCCESS) {
+			agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Get addr failed\n");
+			profile.done = 1;
+			break;
+		}
     
-        if (agc_socket_create(&listener.sock, agc_sockaddr_get_family(sa), SOCK_STREAM, AGC_PROTO_TCP, pool) != AGC_STATUS_SUCCESS) {
-            profile.done = 1;
-            break;
-        }
-        
-        if (agc_socket_opt_set(listener.sock, AGC_SO_REUSEADDR, 1) != AGC_STATUS_SUCCESS) {
-            profile.done = 1;
-            break;
-        }
-        
-        if (agc_socket_bind(listener.sock, sa) != AGC_STATUS_SUCCESS) {
-            profile.done = 1;
-            break;
-        }
-        
-        if (agc_socket_listen(listener.sock, 5) != AGC_STATUS_SUCCESS) {
-            profile.done = 1;
-            break;
-        }
-        
-        break;
+		if (agc_socket_create(&listener.sock, agc_sockaddr_get_family(sa), SOCK_STREAM, AGC_PROTO_TCP, pool) != AGC_STATUS_SUCCESS) {
+			profile.done = 1;
+			break;
+		}
+
+		if (agc_socket_opt_set(listener.sock, AGC_SO_REUSEADDR, 1) != AGC_STATUS_SUCCESS) {
+			profile.done = 1;
+			break;
+		}
+
+		if (agc_socket_bind(listener.sock, sa) != AGC_STATUS_SUCCESS) {
+			profile.done = 1;
+			break;
+		}
+
+		if (agc_socket_listen(listener.sock, 5) != AGC_STATUS_SUCCESS) {
+			profile.done = 1;
+			break;
+		}
+
+		break;
     }
     
-    if (profile.done) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Socket Error! Could not listen on %s:%u\n", profile.ip, profile.port);
-        if (pool) {
-            agc_memory_destroy_pool(&pool);
-        }
-        return AGC_STATUS_TERM;
-    }
+	if (profile.done) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Socket Error! Could not listen on %s:%u\n", profile.ip, profile.port);
+		if (pool) {
+			agc_memory_destroy_pool(&pool);
+		}
+		return AGC_STATUS_TERM;
+	}
     
-    listener.ready = 1;
+	listener.ready = 1;
     
-    while (!profile.done) {
-        if (agc_memory_create_pool(&connection_pool) != AGC_STATUS_SUCCESS) {
-            agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Memory alloc failed\n");
-            profile.done = 1;
-            break;
-        }
+	while (!profile.done) {
+		if (agc_memory_create_pool(&connection_pool) != AGC_STATUS_SUCCESS) {
+			agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Memory alloc failed\n");
+			profile.done = 1;
+			break;
+		}
         
-        if (agc_socket_accept(&new_socket, listener.sock, connection_pool) != AGC_STATUS_SUCCESS) {
-            agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Accept connection failed\n");
-            if (connection_pool)
-                agc_memory_destroy_pool(&connection_pool);
-            continue;
-        }
+		if (agc_socket_accept(&new_socket, listener.sock, connection_pool) != AGC_STATUS_SUCCESS) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Accept connection failed\n");
+			if (connection_pool)
+				agc_memory_destroy_pool(&connection_pool);
+			continue;
+		}
         
-        new_connection = agc_memory_alloc(connection_pool, sizeof(event_connect_t));
-        agc_thread_rwlock_create(&new_connection->rwlock, connection_pool);
+		new_connection = agc_memory_alloc(connection_pool, sizeof(event_connect_t));
+		agc_thread_rwlock_create(&new_connection->rwlock, connection_pool);
 		agc_queue_create(&new_connection->event_queue, MAX_QUEUE_LEN, connection_pool);
         
-        new_connection->sock = new_socket;
-        new_connection->pool = connection_pool;
-        connection_pool = NULL;
-        agc_socket_create_pollset(&new_connection->pollfd, new_connection->sock, AGC_POLLIN | AGC_POLLERR, new_connection->pool);
-        if (agc_socket_addr_get(&new_connection->sa, AGC_TRUE, new_connection->sock) == AGC_STATUS_SUCCESS && new_connection->sa) {
-            agc_get_addr(new_connection->remote_ip, sizeof(new_connection->remote_ip), new_connection->sa);
-            if (new_connection->sa && (new_connection->remote_port = agc_sockaddr_get_port(new_connection->sa))) {
-                launch_connection_thread(new_connection);
-                continue;
-            }
-        }
+		new_connection->sock = new_socket;
+		new_connection->pool = connection_pool;
+		connection_pool = NULL;
+		agc_socket_create_pollset(&new_connection->pollfd, new_connection->sock, AGC_POLLIN | AGC_POLLERR, new_connection->pool);
+		if (agc_socket_addr_get(&new_connection->sa, AGC_TRUE, new_connection->sock) == AGC_STATUS_SUCCESS && new_connection->sa) {
+            		agc_get_addr(new_connection->remote_ip, sizeof(new_connection->remote_ip), new_connection->sa);
+			if (new_connection->sa && (new_connection->remote_port = agc_sockaddr_get_port(new_connection->sa))) {
+				launch_connection_thread(new_connection);
+				continue;
+			}
+		}
         
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Initial connection failed\n");
-        close_socket(&new_connection->sock);
-        release_connection(&new_connection);
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Initial connection failed\n");
+		close_socket(&new_connection->sock);
+		release_connection(&new_connection);
     }
     
     close_socket(&listener.sock);
@@ -266,24 +266,26 @@ static agc_status_t load_configuration()
 
 static void close_socket(agc_socket_t ** sock)
 {
-    agc_mutex_lock(listener.sock_mutex);
+	agc_mutex_lock(listener.sock_mutex);
+	
 	if (*sock) {
 		agc_socket_shutdown(*sock, AGC_SHUTDOWN_READWRITE);
 		agc_socket_close(*sock);
 		*sock = NULL;
 	}
+	
 	agc_mutex_unlock(listener.sock_mutex);
 }
 
 static void release_connection(event_connect_t **conn)
 {
-    event_connect_t *l_conn = *conn;
-    
-    if (!conn || !l_conn)
-        return;
-    
-    agc_memory_destroy_pool(&l_conn->pool);
-    *conn = NULL;
+	event_connect_t *l_conn = *conn;
+
+	if (!conn || !l_conn)
+		return;
+	
+	agc_memory_destroy_pool(&l_conn->pool);
+	*conn = NULL;
 }
 
 static void launch_connection_thread(event_connect_t *conn)
@@ -304,8 +306,17 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 	agc_size_t len;
 	event_connect_t *conn = (event_connect_t *)obj;
 	agc_event_t *revent = NULL;
+	int rc;
+	sigset_t signal_mask;
     
 	assert(conn != NULL);
+
+	sigemptyset (&signal_mask);
+	sigaddset (&signal_mask, SIGPIPE);
+	rc = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
+	if (rc != 0) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Block SIGPIPE failed\n");
+	}
     
 	agc_mutex_lock(profile.mutex);
 	profile.threads++;
@@ -378,23 +389,25 @@ static void add_conn(event_connect_t *conn)
 
 static void remove_conn(event_connect_t *conn)
 {
-    event_connect_t *l_conn, *last_conn;
+	event_connect_t *l_conn = NULL;
+	event_connect_t *last_conn = NULL;
     
-    agc_mutex_lock(listener.sock_mutex);
-    for (l_conn = listener.connections; l_conn; l_conn = l_conn->next) {
-        if (l_conn == conn) {
-            if (last_conn) {
-                last_conn->next = l_conn->next;
-            } else {
-                listener.connections = l_conn->next;
-            }
-            break;
-        }
-        
-        last_conn = l_conn;
-    }
-    
-    agc_mutex_unlock(listener.sock_mutex);
+	agc_mutex_lock(listener.sock_mutex);
+	for (l_conn = listener.connections; l_conn; l_conn = l_conn->next) {
+		if (l_conn == conn) {
+			if (last_conn) {
+				last_conn->next = l_conn->next;
+			} else {
+				listener.connections = l_conn->next;
+			}
+			
+			break;
+		}
+	    
+		last_conn = l_conn;
+	}
+
+	agc_mutex_unlock(listener.sock_mutex);
 }
 
 static void handle_event(void *data)
@@ -431,8 +444,8 @@ static void handle_event(void *data)
 
 static void send_disconnect(event_connect_t *conn, const char *message)
 {
-    char disco_buf[512] = "";
-	agc_size_t len, mlen;
+	char disco_buf[512] = "";
+	agc_size_t len = 0, mlen = 0;
 
 	if (zstr(message)) {
 		message = "Disconnected.\n";
@@ -440,30 +453,33 @@ static void send_disconnect(event_connect_t *conn, const char *message)
 
 	mlen = strlen(message);
 	
-    agc_snprintf(disco_buf, sizeof(disco_buf), "Content-Type: text/disconnect-notice\nContent-Length: %d\n\n", (int)mlen);
+	agc_snprintf(disco_buf, sizeof(disco_buf), "Content-Type: text/disconnect-notice\nContent-Length: %d\n\n", (int)mlen);
 
 	if (!conn->sock) return;
 
 	len = strlen(disco_buf);
-	agc_socket_send(conn->sock, disco_buf, &len);
-	if (len > 0) {
-		len = mlen;
-		agc_socket_send(conn->sock, message, &len);
+	if (agc_socket_send(conn->sock, disco_buf, &len) == AGC_STATUS_SUCCESS) {
+		if (len > 0) {
+			len = mlen;
+			agc_socket_send(conn->sock, message, &len);
+		}
 	}
 }
 
 static void kill_connections(void)
 {
-    event_connect_t *conn;
-    
-    agc_mutex_lock(listener.sock_mutex);
-    for (conn = listener.connections; conn; conn = conn->next) {
-        send_disconnect(conn, "The system is being shut down.\n");
-        conn->is_running = 0;
-        if (conn->sock) {
-            agc_socket_shutdown(conn->sock, AGC_SHUTDOWN_READWRITE);
-            agc_socket_close(conn->sock);
-	    }
+	event_connect_t *conn = NULL;
+
+	agc_mutex_lock(listener.sock_mutex);
+	
+	for (conn = listener.connections; conn; conn = conn->next) {
+		send_disconnect(conn, "The system is being shut down.\n");
+		conn->is_running = 0;
+		if (conn->sock) {
+			agc_socket_shutdown(conn->sock, AGC_SHUTDOWN_READWRITE);
+			agc_socket_close(conn->sock);
+		}
 	}
-    agc_mutex_unlock(listener.sock_mutex);
+	
+	agc_mutex_unlock(listener.sock_mutex);
 }
