@@ -49,23 +49,23 @@ static void *pool_thread(agc_thread_t *thread, void *obj)
 
 agc_memory_pool_t *agc_core_memory_init(void)
 {
-    agc_threadattr_t *thd_attr;
+	agc_threadattr_t *thd_attr;
 	apr_allocator_t *my_allocator = NULL;
 	apr_thread_mutex_t *my_mutex;
 
-    memset(&memory_manager, 0, sizeof(memory_manager));
+	memset(&memory_manager, 0, sizeof(memory_manager));
     
-    if ((apr_allocator_create(&my_allocator)) != APR_SUCCESS) {
+	if ((apr_allocator_create(&my_allocator)) != APR_SUCCESS) {
 		abort();
 	}
     
-    if ((apr_pool_create_ex(&memory_manager.memory_pool, NULL, NULL, my_allocator)) != APR_SUCCESS) {
+	if ((apr_pool_create_ex(&memory_manager.memory_pool, NULL, NULL, my_allocator)) != APR_SUCCESS) {
 		apr_allocator_destroy(my_allocator);
 		my_allocator = NULL;
 		abort();
 	}
     
-    if ((apr_thread_mutex_create(&my_mutex, APR_THREAD_MUTEX_NESTED, memory_manager.memory_pool)) != APR_SUCCESS) {
+	if ((apr_thread_mutex_create(&my_mutex, APR_THREAD_MUTEX_NESTED, memory_manager.memory_pool)) != APR_SUCCESS) {
 		abort();
 	}
     
@@ -73,7 +73,7 @@ agc_memory_pool_t *agc_core_memory_init(void)
 	apr_allocator_owner_set(my_allocator, memory_manager.memory_pool);
 	apr_pool_tag(memory_manager.memory_pool, "core_pool");  
 
-    agc_queue_create(&memory_manager.pool_queue, 50000, memory_manager.memory_pool);
+	agc_queue_create(&memory_manager.pool_queue, 50000, memory_manager.memory_pool);
 	agc_queue_create(&memory_manager.pool_recycle_queue, 50000, memory_manager.memory_pool);
 
 	agc_threadattr_create(&thd_attr, memory_manager.memory_pool);
@@ -81,11 +81,11 @@ agc_memory_pool_t *agc_core_memory_init(void)
 	agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
 	agc_thread_create(&pool_thread_p, thd_attr, pool_thread, NULL, memory_manager.memory_pool);
     
-    while (!memory_manager.pool_thread_running) {
+	while (!memory_manager.pool_thread_running) {
 		agc_cond_next();
 	}
     
-    return memory_manager.memory_pool;
+	return memory_manager.memory_pool;
 }
 
 AGC_DECLARE(void) agc_memory_pool_tag(agc_memory_pool_t *pool, const char *tag)
@@ -104,19 +104,19 @@ AGC_DECLARE(agc_status_t) agc_memory_destroy_pool(agc_memory_pool_t **pool)
 		apr_pool_destroy(*pool);
 	}
 
-    *pool = NULL;
+	*pool = NULL;
 
 	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_memory_create_pool(agc_memory_pool_t **pool)
 {
-    apr_allocator_t *my_allocator = NULL;
-    apr_thread_mutex_t *my_mutex;
+    //apr_allocator_t *my_allocator = NULL;
+   // apr_thread_mutex_t *my_mutex;
 
     agc_assert(pool != NULL);
 
-    if ((apr_allocator_create(&my_allocator)) != APR_SUCCESS) {
+    /*if ((apr_allocator_create(&my_allocator)) != APR_SUCCESS) {
         abort();
     }
 
@@ -129,10 +129,25 @@ AGC_DECLARE(agc_status_t) agc_memory_create_pool(agc_memory_pool_t **pool)
     }
 
     apr_allocator_mutex_set(my_allocator, my_mutex);
-    apr_allocator_owner_set(my_allocator, *pool);
+    apr_allocator_owner_set(my_allocator, *pool); */
 
     //TODO apr_pool_mutex_set(*pool, my_mutex);
-    return AGC_STATUS_SUCCESS;
+
+	if (apr_pool_create(pool, NULL) != APR_SUCCESS) {
+		abort();
+	}
+	
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_memory_simple_create_pool(agc_memory_pool_t **pool)
+{
+	agc_assert(pool != NULL);
+	if (apr_pool_create(pool, NULL) != APR_SUCCESS) {
+		abort();
+	}
+
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(void *) agc_memory_alloc(agc_memory_pool_t *pool, agc_size_t memory)

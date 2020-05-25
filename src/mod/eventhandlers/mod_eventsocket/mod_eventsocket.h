@@ -10,19 +10,21 @@
 typedef struct event_connect_s event_connect_t;
 
 struct event_connect_s {
-    agc_socket_t *sock;
-    agc_queue_t *event_queue;
-    agc_memory_pool_t *pool;
-    agc_pollfd_t *pollfd;
-    agc_thread_rwlock_t *rwlock;
-    agc_sockaddr_t *sa;
-    char remote_ip[64];
-    agc_port_t remote_port;
-    uint8_t has_event;
-    uint8_t is_running;
-    char *ebuf;
-    uint8_t event_list[EVENT_ID_LIMIT];
-    event_connect_t *next;
+	agc_socket_t *sock;
+	agc_queue_t *event_queue;
+	agc_thread_t *conn_thread;
+	agc_memory_pool_t *pool;
+	agc_memory_pool_t *thread_pool;
+	agc_pollfd_t *pollfd;
+	agc_thread_rwlock_t *rwlock;
+	agc_sockaddr_t *sa;
+	char remote_ip[64];
+	agc_port_t remote_port;
+	uint8_t has_event;
+	uint8_t is_running;
+	char *ebuf;
+	uint8_t event_list[EVENT_ID_LIMIT];
+	event_connect_t *next;
 };
 
 typedef struct event_listener_s event_listener_t;

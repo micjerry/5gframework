@@ -88,7 +88,8 @@ AGC_MODULE_SHUTDOWN_FUNCTION(mod_eventsocket_shutdown)
 
 AGC_MODULE_RUNTIME_FUNCTION(mod_eventsocket_runtime)
 {
-	agc_memory_pool_t *pool = NULL, *connection_pool = NULL;
+	agc_memory_pool_t *pool = NULL;
+	agc_memory_pool_t *connection_pool = NULL;
 	agc_status_t status;
 	agc_sockaddr_t *sa;
 	agc_socket_t *new_socket = NULL;
@@ -153,6 +154,7 @@ AGC_MODULE_RUNTIME_FUNCTION(mod_eventsocket_runtime)
 				agc_memory_destroy_pool(&connection_pool);
 			continue;
 		}
+
         
 		new_connection = agc_memory_alloc(connection_pool, sizeof(event_connect_t));
 		agc_thread_rwlock_create(&new_connection->rwlock, connection_pool);
@@ -161,9 +163,11 @@ AGC_MODULE_RUNTIME_FUNCTION(mod_eventsocket_runtime)
 		new_connection->sock = new_socket;
 		new_connection->pool = connection_pool;
 		connection_pool = NULL;
+		
 		agc_socket_create_pollset(&new_connection->pollfd, new_connection->sock, AGC_POLLIN | AGC_POLLERR, new_connection->pool);
 		if (agc_socket_addr_get(&new_connection->sa, AGC_TRUE, new_connection->sock) == AGC_STATUS_SUCCESS && new_connection->sa) {
             		agc_get_addr(new_connection->remote_ip, sizeof(new_connection->remote_ip), new_connection->sa);
+			
 			if (new_connection->sa && (new_connection->remote_port = agc_sockaddr_get_port(new_connection->sa))) {
 				launch_connection_thread(new_connection);
 				continue;
@@ -283,20 +287,28 @@ static void release_connection(event_connect_t **conn)
 
 	if (!conn || !l_conn)
 		return;
+
+	if (l_conn->pool)
+		agc_memory_destroy_pool(&l_conn->pool);
+
+	if (l_conn->thread_pool)
+		agc_memory_destroy_pool(&l_conn->thread_pool);
 	
-	agc_memory_destroy_pool(&l_conn->pool);
 	*conn = NULL;
 }
 
 static void launch_connection_thread(event_connect_t *conn)
 {
-	agc_thread_t *thread;
 	agc_threadattr_t *thd_attr = NULL;
 
-	agc_threadattr_create(&thd_attr, conn->pool);
+	//thread and socket can not share one pool
+	if (agc_memory_create_pool(&conn->thread_pool)  != AGC_STATUS_SUCCESS) {
+		return;
+	}
+	agc_threadattr_create(&thd_attr, conn->thread_pool);
 	agc_threadattr_detach_set(thd_attr, 1);
 	agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
-	agc_thread_create(&thread, thd_attr, connection_run, conn, conn->pool);
+	agc_thread_create(&conn->conn_thread, thd_attr, connection_run, conn, conn->thread_pool);
 }
 
 static void *connection_run(agc_thread_t *thread, void *obj)
@@ -311,6 +323,7 @@ static void *connection_run(agc_thread_t *thread, void *obj)
     
 	assert(conn != NULL);
 
+	//disable SIGPIPE, otherwise write to a closed socket will crash
 	sigemptyset (&signal_mask);
 	sigaddset (&signal_mask, SIGPIPE);
 	rc = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
@@ -331,7 +344,7 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 	while (!profile.done && listener.ready && conn->is_running) {
 		len = sizeof(buf);
 		memset(buf, 0, len);
-        
+
 		if (read_packet(conn, &revent) != AGC_STATUS_SUCCESS) {
 			break;
 		}
@@ -369,7 +382,6 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 	send_disconnect(conn, "Disconnected, goodbye.\n");
 	remove_conn(conn);
 	close_socket(&conn->sock);
-    
 	release_connection(&conn);
     
 	agc_mutex_lock(profile.mutex);
