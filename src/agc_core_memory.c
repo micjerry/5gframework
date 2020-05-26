@@ -114,7 +114,7 @@ AGC_DECLARE(agc_status_t) agc_memory_create_pool(agc_memory_pool_t **pool)
     //apr_allocator_t *my_allocator = NULL;
    // apr_thread_mutex_t *my_mutex;
 
-    agc_assert(pool != NULL);
+	agc_assert(pool != NULL);
 
     /*if ((apr_allocator_create(&my_allocator)) != APR_SUCCESS) {
         abort();
@@ -137,16 +137,6 @@ AGC_DECLARE(agc_status_t) agc_memory_create_pool(agc_memory_pool_t **pool)
 		abort();
 	}
 	
-	return AGC_STATUS_SUCCESS;
-}
-
-AGC_DECLARE(agc_status_t) agc_memory_simple_create_pool(agc_memory_pool_t **pool)
-{
-	agc_assert(pool != NULL);
-	if (apr_pool_create(pool, NULL) != APR_SUCCESS) {
-		abort();
-	}
-
 	return AGC_STATUS_SUCCESS;
 }
 

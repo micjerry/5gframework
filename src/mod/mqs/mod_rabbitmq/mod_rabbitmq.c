@@ -32,7 +32,7 @@ AGC_MODULE_LOAD_FUNCTION(mod_rabbitmq_load)
 
 	agc_api_register("agcmq", "agcmq API", "syntax", agcmq_load);
 
-	if (agc_event_bind_removable("agcmq", EVENT_ID_ALL, handle_event, NULL, &mq_subscribe) != AGC_STATUS_SUCCESS) {
+	if (agc_event_bind_removable("agcmq", EVENT_ID_ALL, handle_event, &mq_subscribe) != AGC_STATUS_SUCCESS) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "%s subscribe event failed.\n", modname);
 		return AGC_STATUS_GENERR;
 	}

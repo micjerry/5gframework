@@ -17,7 +17,7 @@ static int DISPATCH_THREAD_COUNT = 0;
 static agc_memory_pool_t *RUNTIME_POOL = NULL;
 static unsigned int MAX_DISPATCHER = 64;
 #define DISPATCH_QUEUE_LIMIT 10000
-static int EVENT_SOURCE_ID = 0;
+static uint32_t EVENT_SOURCE_ID = 0;
 static agc_mutex_t *SOURCEID_MUTEX = NULL;
 static agc_mutex_t *EVENTSTATE_MUTEX = NULL;
 
@@ -103,14 +103,17 @@ AGC_DECLARE(agc_status_t) agc_event_shutdown(void)
     return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(int) agc_event_alloc_source(const char *source_name)
+AGC_DECLARE(uint32_t) agc_event_alloc_source(const char *source_name)
 {
-    int source_id;
-    agc_mutex_lock(EVENTSTATE_MUTEX);
-    source_id = EVENT_SOURCE_ID++;
-    agc_mutex_unlock(EVENTSTATE_MUTEX);
+	uint32_t source_id;
+	agc_mutex_lock(EVENTSTATE_MUTEX);
+	source_id = EVENT_SOURCE_ID++;
+	if (EVENT_SOURCE_ID == UINT32_MAX)
+		EVENT_SOURCE_ID = 0;
+	
+	agc_mutex_unlock(EVENTSTATE_MUTEX);
     
-    return source_id;
+	return source_id;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_register(int event_id, const char *event_name)
@@ -168,7 +171,7 @@ AGC_DECLARE(const char *) agc_event_get_name(int event_id)
 	agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
 }
 
-AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, int source_id)
+AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, uint32_t source_id)
 {
     agc_event_t * new_event;
     new_event= malloc(sizeof(agc_event_t));
@@ -182,7 +185,7 @@ AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, in
 }
 
 AGC_DECLARE(agc_status_t) agc_event_create_callback(agc_event_t **event,  
-                                                    int source_id, 
+                                                    uint32_t source_id, 
                                                     void *data, 
                                                     agc_event_callback_func callback)
 {
@@ -276,7 +279,7 @@ AGC_DECLARE(agc_status_t) agc_event_del_header(agc_event_t *event, const char *h
     return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(char *) agc_event_get_header(agc_event_t *event, const char *header_name)
+AGC_DECLARE(const char *) agc_event_get_header(agc_event_t *event, const char *header_name)
 {
     agc_event_header_t *hp;
     if ((hp = agc_event_get_header_ptr(event, header_name))) {
@@ -322,7 +325,7 @@ AGC_DECLARE(agc_status_t) agc_event_set_body(agc_event_t *event, const char *bod
     return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(char *) agc_event_get_body(agc_event_t *event)
+AGC_DECLARE(const char *) agc_event_get_body(agc_event_t *event)
 {
     return (event ? event->body : NULL);
 }
@@ -350,16 +353,14 @@ AGC_DECLARE(agc_status_t) agc_event_dup(agc_event_t **event, agc_event_t *todup)
 
 AGC_DECLARE(agc_status_t) agc_event_bind(const char *id, 
                                          int event_id, 
-                                         agc_event_callback_func callback,
-                                         void *user_data)
+                                         agc_event_callback_func callback)
 {
-    return agc_event_bind_removable(id, event_id, callback, user_data, NULL);
+    return agc_event_bind_removable(id, event_id, callback, NULL);
 }
 
 AGC_DECLARE(agc_status_t) agc_event_bind_removable(const char *id, 
                                                    int event_id, 
                                                    agc_event_callback_func callback, 
-                                                   void *user_data, 
                                                    agc_event_node_t **node)
 {
     agc_event_node_t *event_node;
@@ -374,7 +375,6 @@ AGC_DECLARE(agc_status_t) agc_event_bind_removable(const char *id,
     event_node->id = strdup(id);
     event_node->event_id = event_id;
     event_node->callback = callback;
-    event_node->user_data = user_data;
           
     agc_thread_rwlock_wrlock(EVENT_NODES_RWLOCK);
     if (EVENT_NODES[event_id]) {
@@ -499,9 +499,9 @@ AGC_DECLARE(agc_status_t) agc_event_unbind_callback(agc_event_callback_func call
 
 AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON **json)
 {
-    agc_event_header_t *hp;
+	agc_event_header_t *hp;
 	cJSON *cj;
-    char str_evtid[25];
+	char str_evtid[25];
 
 	cj = cJSON_CreateObject();
 
@@ -509,12 +509,12 @@ AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON
 		cJSON_AddItemToObject(cj, hp->name, cJSON_CreateString(hp->value));
 	}
     
-    agc_snprintf(str_evtid, sizeof(str_evtid), "%d", event->event_id);
-    cJSON_AddItemToObject(cj, "_id", cJSON_CreateString(str_evtid));
+	agc_snprintf(str_evtid, sizeof(str_evtid), "%d", event->event_id);
+	 cJSON_AddItemToObject(cj, "_id", cJSON_CreateString(str_evtid));
 
-    if (event_templates[event->event_id]) {
-        cJSON_AddItemToObject(cj, "_name", cJSON_CreateString(event_templates[event->event_id]));
-    }
+	if (event_templates[event->event_id]) {
+		cJSON_AddItemToObject(cj, "_name", cJSON_CreateString(event_templates[event->event_id]));
+	}
 
 	if (event->body) {
 		int blen = (int) strlen(event->body);
@@ -534,7 +534,7 @@ AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON
 
 AGC_DECLARE(agc_status_t) agc_event_serialize_json(agc_event_t *event, char **str)
 {
-    cJSON *cj;
+	cJSON *cj;
 	*str = NULL;
 
 	if (agc_event_serialize_json_obj(event, &cj) == AGC_STATUS_SUCCESS) {

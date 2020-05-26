@@ -156,8 +156,6 @@ static agc_status_t agc_cache_redis_set(const char *key, const char *value, int 
 		}
 	}
 
-	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "redis refresh.\n");
-
 end:
 	status = agc_redis_multireplies(connection, cmds);
 	
@@ -430,6 +428,7 @@ static agc_status_t agc_cache_redis_hashset(const char *tablename, const char *k
 	agc_status_t status = AGC_STATUS_GENERR;
 
 	if (!tablename || !key || !value) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "hset invalid prameter.\n");
 		return status;
 	}
 
@@ -452,6 +451,8 @@ static agc_status_t agc_cache_redis_hashset(const char *tablename, const char *k
 	}
 
 	freeReplyObject(reply);
+
+	return status;
 	
 }
 

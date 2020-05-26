@@ -52,7 +52,7 @@ AGC_MODULE_LOAD_FUNCTION(mod_eventsocket_load)
     agc_mutex_init(&listener.sock_mutex, AGC_MUTEX_NESTED, module_pool);
     agc_mutex_init(&profile.mutex, AGC_MUTEX_NESTED, module_pool);
     
-    if (agc_event_bind_removable("eventsocket", EVENT_ID_ALL, handle_event, NULL, &subscribe) != AGC_STATUS_SUCCESS) {
+    if (agc_event_bind_removable("eventsocket", EVENT_ID_ALL, handle_event, &subscribe) != AGC_STATUS_SUCCESS) {
          agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "%s subscribe event failed.\n", modname);
          return AGC_STATUS_GENERR;
     }
