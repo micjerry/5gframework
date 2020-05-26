@@ -61,6 +61,7 @@ test_event_command_t event_commands[] = {
 	{"test_dup", test_dup},
 	{"test_bind", test_bind},
 	{"test_unbind", test_unbind},
+	{"test_bindremove", test_bindremove},
 	{"test_unbindremove", test_unbindremove},
 	{"test_json", test_json}
 };
@@ -367,11 +368,11 @@ static agc_status_t test_dup(agc_stream_handle_t *stream)
 {
 	agc_event_t *new_event = NULL;
 	agc_event_t *clone = NULL;
-	agc_status_t satus = AGC_STATUS_FALSE;
+	agc_status_t status = AGC_STATUS_FALSE;
 
 	if ((agc_event_create(&new_event, g_event_id, g_source_id) != AGC_STATUS_SUCCESS) ||! new_event) {
 		stream->write_function(stream, "test agc_event_dup [fail].\n");
-		return satus;
+		return status;
 	}
 
 	if ((agc_event_dup(&clone, new_event) == AGC_STATUS_SUCCESS) && clone){
@@ -387,7 +388,7 @@ static agc_status_t test_dup(agc_stream_handle_t *stream)
 	if (clone)
 		agc_event_destroy(&clone);
 
-	return satus;
+	return status;
 }
 
 static agc_status_t test_bind(agc_stream_handle_t *stream)

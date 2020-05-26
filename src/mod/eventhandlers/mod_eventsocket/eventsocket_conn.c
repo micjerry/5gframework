@@ -180,25 +180,29 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
 {
 	agc_status_t status = AGC_STATUS_SUCCESS;
 	char *cmd = NULL;
+	const char *cmd_header = NULL;
 	agc_event_t *pevent = *event;
     
 	*reply = '\0';
     
-	if (!event || !pevent || !(cmd = agc_event_get_header(pevent, "command"))) {
+	if (!event || !pevent || !(cmd_header = agc_event_get_header(pevent, "command"))) {
 		conn->is_running = 0;
 		agc_snprintf(reply, reply_len, "-ERR command parse error.");
 		return status;
 	}
+
+	cmd = strdup(cmd_header);
     
 	if (!strncasecmp(cmd, "exit", 4) || !strncasecmp(cmd, "...", 3)) {
 		conn->is_running = 0;
 		agc_snprintf(reply, reply_len, "+OK bye");
+		agc_safe_free(cmd);
 		return status;
 	}
     
 	if (!strncasecmp(cmd, "api ", 4)) {
 		api_command_t acs = {0};
-		char *console_execute = agc_event_get_header(pevent, "console_execute");
+		const char *console_execute = agc_event_get_header(pevent, "console_execute");
         
 		char *api_cmd = cmd + 4;
 		char *arg = NULL;
@@ -271,7 +275,9 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
         
 		conn->has_event = 1;
 	}
-    
+
+	agc_safe_free(cmd);
+	
 	return status; 
 }
 

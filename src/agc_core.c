@@ -195,37 +195,37 @@ AGC_DECLARE(void) agc_core_set_globals(void)
 
 AGC_DECLARE(char *) agc_core_strdup(agc_memory_pool_t *pool, const char *todup)
 {
-    char *duped = NULL;
+	char *duped = NULL;
 	agc_size_t len;
 	assert(pool != NULL);
     
-    if (!todup) {
+	if (!todup) {
 		return NULL;
 	}
     
-    if (zstr(todup)) {
+	if (zstr(todup)) {
 		return AGC_BLANK_STRING;
 	}
     
-    len = strlen(todup) + 1;
-    duped = apr_pstrmemdup(pool, todup, len);
-    assert(duped != NULL);
-    return duped;
+	len = strlen(todup) + 1;
+	duped = apr_pstrmemdup(pool, todup, len);
+	assert(duped != NULL);
+	return duped;
 }
 
 AGC_DECLARE(char *) agc_core_vsprintf(agc_memory_pool_t *pool, const char *fmt, va_list ap)
 {
-    char *result = NULL;
-    assert(pool != NULL);
-    
-    result = apr_pvsprintf(pool, fmt, ap);
+	char *result = NULL;
+	assert(pool != NULL);
+
+	result = apr_pvsprintf(pool, fmt, ap);
 	assert(result != NULL);
-    return result;
+	return result;
 }
 
 AGC_DECLARE(char *) agc_core_sprintf(agc_memory_pool_t *pool, const char *fmt, ...)
 {
-    va_list ap;
+	va_list ap;
 	char *result;
 	va_start(ap, fmt);
 	result = agc_core_vsprintf(pool, fmt, ap);
@@ -236,12 +236,12 @@ AGC_DECLARE(char *) agc_core_sprintf(agc_memory_pool_t *pool, const char *fmt, .
 
 AGC_DECLARE(uint32_t) agc_core_cpu_count(void)
 {
-    return runtime.cpu_count;
+	return runtime.cpu_count;
 }
 
 AGC_DECLARE(void) agc_os_yield(void)
 {
-    sched_yield(); 
+	sched_yield(); 
 }
 
 AGC_DECLARE(agc_status_t) agc_core_modload(const char **err)
@@ -266,36 +266,41 @@ AGC_DECLARE(agc_status_t) agc_core_modload(const char **err)
 
 AGC_DECLARE(agc_thread_t *) agc_core_launch_thread(agc_thread_start_t func, void *obj, agc_memory_pool_t *pool)
 {
-    agc_thread_t *thread = NULL;
-    agc_threadattr_t *thd_attr = NULL;
-    agc_core_thread_obj_t *thd_obj = NULL;
+	agc_thread_t *thread = NULL;
+	agc_threadattr_t *thd_attr = NULL;
+	agc_core_thread_obj_t *thd_obj = NULL;
+	int mypool;
+
+	mypool = pool ? 0 : 1;
     
-    if (!pool) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "no pool\n");
-        return NULL;
-    }
+	if (!pool && (agc_memory_create_pool(&pool) != AGC_STATUS_SUCCESS)) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "no pool\n");
+		return NULL;
+	}
     
-    agc_threadattr_create(&thd_attr, pool);
-    if ((thd_obj = agc_memory_alloc(pool, sizeof(*thd_obj))) == 0) {
-        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Could not allocate memory\n");
-        return NULL;
-    }
+	agc_threadattr_create(&thd_attr, pool);
+	if ((thd_obj = agc_memory_alloc(pool, sizeof(*thd_obj))) == 0) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Could not allocate memory\n");
+		return NULL;
+	}
+
+	if (mypool)
+		thd_obj->pool = pool;
+	
+	thd_obj->objs[0] = obj;
+	thd_obj->objs[1] = thread;
     
-    thd_obj->pool = pool;
-    thd_obj->objs[0] = obj;
-    thd_obj->objs[1] = thread;
+	agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
+	agc_threadattr_priority_set(thd_attr, AGC_PRI_REALTIME);
     
-    agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
-    agc_threadattr_priority_set(thd_attr, AGC_PRI_REALTIME);
+	agc_thread_create(&thread, thd_attr, func, thd_obj, pool);
     
-    agc_thread_create(&thread, thd_attr, func, thd_obj, pool);
-    
-    return thread;
+	return thread;
 }
 
 AGC_DECLARE(void) agc_cond_next(void)
 {
-    apr_sleep(1000);
+	apr_sleep(1000);
 }
 
 AGC_DECLARE(void) agc_core_runtime_loop(void)
@@ -308,7 +313,7 @@ AGC_DECLARE(void) agc_core_runtime_loop(void)
 
 AGC_DECLARE(agc_bool_t) agc_core_is_running(void)
 {
-    return runtime.running ? AGC_TRUE : AGC_FALSE;
+	return runtime.running ? AGC_TRUE : AGC_FALSE;
 }
 
 AGC_DECLARE(const char *) agc_core_get_hostname(void)
