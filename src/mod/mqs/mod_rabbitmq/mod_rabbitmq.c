@@ -76,11 +76,18 @@ static void handle_event(void *data)
 	agcmq_conn_parameter_t *para;
 	agc_time_t now = agc_timer_curtime();
 
+	if (!event)
+		return;
+
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "receive event %d.\n", event->event_id);
+
 	for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.producer_hash); hi; hi = agc_hash_next(hi))  {
 		val = agc_hash_this_val(hi);
 		producer = (agcmq_producer_profile_t *) val;
-		if (!producer || !producer->running)
+		if (!producer || !producer->running) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "invalid producer.\n");
 			continue;
+		}
 
 		para = producer->conn_parameter;
 
@@ -90,6 +97,7 @@ static void handle_event(void *data)
 		}
 
 		if (producer->event_list[event->event_id]) {
+			agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Producer[%s] subs event %d.\n", producer->name, event->event_id);
 			msg = malloc(sizeof(agcmq_message_t));
 			if (!msg) {
 				agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc memory failed.\n");

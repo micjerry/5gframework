@@ -82,7 +82,7 @@ AGC_DECLARE(agc_status_t) agc_api_execute(const char *cmd, const char *arg, agc_
 	assert(stream != NULL);
 	assert(stream->data != NULL);
 	assert(stream->write_function != NULL);
-    
+
 	if (command && (api = agc_api_find(command)) != NULL) {
 		if ((status = api->function(argument, stream)) != AGC_STATUS_SUCCESS) {
 			stream->write_function(stream, "COMMAND RETURN ERROR!\n");
@@ -91,7 +91,7 @@ AGC_DECLARE(agc_status_t) agc_api_execute(const char *cmd, const char *arg, agc_
 		status = AGC_STATUS_FALSE;
 		stream->write_function(stream, "INVALID COMMAND!\n");
 	}
-    
+	
 	return status;
 }
 
@@ -121,6 +121,8 @@ static agc_status_t parse_and_exec(char *xcmd)
 	status = agc_api_execute(cmd, arg, &stream);
 	agc_safe_free(stream.data);
 	agc_safe_free(cmd);
+
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(void) agc_parse_execute(char *xcmd)

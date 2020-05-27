@@ -508,6 +508,7 @@ static agc_status_t test_json(agc_stream_handle_t *stream)
 	}
 
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "test agc_event_serialize_json_obj  %s .\n", result);
+	agc_safe_free(result);
 	agc_event_destroy(&new_event);
 	stream->write_function(stream, "test agc_event_serialize_json_obj [ok].\n");
 	return AGC_STATUS_SUCCESS;	

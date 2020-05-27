@@ -89,7 +89,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 	
 	while (consumer->running) {
 		if (!agcmq_is_conn_active(consumer->mq_conn)) {
-			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] reconnectiong.\n", consumer->name);
+			agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] reconnecting.\n", consumer->name);
 
 			status = agcmq_connection_open(consumer->conn_infos, consumer->mq_conn, consumer->name);
 
@@ -118,7 +118,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 
 			recv_queue = amqp_queue_declare(consumer->mq_conn->state, // state
 										1,                           // channel
-										amqp_empty_bytes, // queue name
+										amqp_cstring_bytes(para->queuename), // queue name amqp_empty_bytes
 										0, 0,                        // passive, durable
 										0, 1,                        // exclusive, auto-delete
 										amqp_empty_table);

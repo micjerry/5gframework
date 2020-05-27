@@ -202,7 +202,7 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
     
 	if (!strncasecmp(cmd, "api ", 4)) {
 		api_command_t acs = {0};
-		const char *console_execute = agc_event_get_header(pevent, "console_execute");
+		//const char *console_execute = agc_event_get_header(pevent, "console_execute");
         
 		char *api_cmd = cmd + 4;
 		char *arg = NULL;
@@ -222,7 +222,7 @@ agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *rep
 		acs.api_cmd = api_cmd;
 		acs.arg = arg;
 		acs.bg = 0;
-        
+
 		api_exec(NULL, (void *)&acs);
         
 		status = AGC_STATUS_SUCCESS;
@@ -306,7 +306,7 @@ static void *api_exec(agc_thread_t *thread, void *obj)
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Internal error.\n");
 		return NULL;
 	}
-    
+
 	if (!acs->conn || !acs->conn->is_running ||
 		!acs->conn->rwlock || agc_thread_rwlock_tryrdlock(acs->conn->rwlock) != AGC_STATUS_SUCCESS) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Error! cannot get read lock.\n");
@@ -355,7 +355,7 @@ static void *api_exec(agc_thread_t *thread, void *obj)
     
 	agc_safe_free(stream.data);
 	agc_safe_free(freply);
-    
+
 	if (acs->conn->rwlock) {
 		agc_thread_rwlock_unlock(acs->conn->rwlock);
 	}

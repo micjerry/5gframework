@@ -167,13 +167,16 @@ AGC_DECLARE(agc_status_t) agc_event_get_id(const char *event_name, int *event_id
 
 AGC_DECLARE(const char *) agc_event_get_name(int event_id)
 {
+	const char *event_name = NULL;
+	
 	if (EVENT_ID_IS_INVALID(event_id)) {
 		return NULL;
 	}
 
 	agc_thread_rwlock_rdlock(EVENT_TEMPLATES_RWLOCK);
-	return event_templates[event_id];
+	event_name = event_templates[event_id];
 	agc_thread_rwlock_unlock(EVENT_TEMPLATES_RWLOCK);
+	return event_name;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, uint32_t source_id)

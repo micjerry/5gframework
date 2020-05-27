@@ -39,6 +39,7 @@ struct agcmq_conn_parameter_s {
 	char *ex_name;
 	char *ex_type;
 	char *bind_key;
+	char *queuename;
 	unsigned int reconnect_interval_ms;
 	unsigned int circuit_breaker_ms;
 	unsigned int queue_size;

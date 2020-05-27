@@ -47,7 +47,7 @@ agc_status_t test_main_real(const char *cmd, agc_stream_handle_t *stream)
 	if (!(cmdbuf = strdup(cmd))) {
 		return status;
 	}
-
+	
 	argc = agc_separate_string(cmdbuf , ' ', argv, (sizeof(argv) / sizeof(argv[0])));
 
 	if (argc && argv[0]) {
@@ -59,7 +59,7 @@ agc_status_t test_main_real(const char *cmd, agc_stream_handle_t *stream)
 
 				if (argc > 1)
 					sub_argv = &argv[1];
-
+				
 				pfunc(stream, sub_argc, sub_argv);
 
 				found = 1;
@@ -73,6 +73,8 @@ agc_status_t test_main_real(const char *cmd, agc_stream_handle_t *stream)
 		} 
 	}
 
+	agc_safe_free(cmdbuf);
+	
 	return status;
 	
 }

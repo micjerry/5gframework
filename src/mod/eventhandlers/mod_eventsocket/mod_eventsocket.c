@@ -344,7 +344,7 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 	while (!profile.done && listener.ready && conn->is_running) {
 		len = sizeof(buf);
 		memset(buf, 0, len);
-
+				
 		if (read_packet(conn, &revent) != AGC_STATUS_SUCCESS) {
 			break;
 		}
@@ -354,6 +354,7 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 		}
         
 		if (parse_command(conn, &revent, reply, sizeof(reply)) != AGC_STATUS_SUCCESS ) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "command executed failed close socket\n");
 			conn->is_running = 0;
 			break;
 		}

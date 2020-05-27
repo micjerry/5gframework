@@ -13,4 +13,5 @@ parameters:
     exname: "TAP.Commands"
     binding_key: "agc.command"
     reconnect_interval_ms : "1000"
+    queuename: "agc.defaultcmd"
     

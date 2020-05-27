@@ -306,6 +306,9 @@ static agc_status_t agcmq_load_profile(const char *filename,
 						} else if (strcmp(token.data.scalar.value, "extype") == 0) {
 							keytype = KEY_STR;
 							strvalue = &para->ex_type;
+						} else if (strcmp(token.data.scalar.value, "queuename") == 0) {
+							keytype = KEY_STR;
+							strvalue = &para->queuename;
 						} else if (strcmp(token.data.scalar.value, "circuit_breaker_ms") == 0) {
 							keytype = KEY_INT;
 							intvalue = &para->circuit_breaker_ms;
