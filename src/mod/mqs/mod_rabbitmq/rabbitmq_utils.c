@@ -79,6 +79,8 @@ agc_status_t agcmq_load_config()
 	agc_memory_destroy_pool(&loop_pool);
 
 	agc_safe_free(dir_path);
+
+	return AGC_STATUS_SUCCESS;
 }
 
 agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, agcmq_connection_t *conn, char *profile_name)
