@@ -40,21 +40,21 @@ AGC_DECLARE(agc_status_t) agc_diver_del_connection(agc_connection_t *c)
     return routine->del_conn(c);
 }
 
-AGC_DECLARE(agc_status_t)  agc_diver_add_event(agc_routine_t *routin, uint32_t event)
+AGC_DECLARE(agc_status_t)  agc_diver_add_event(agc_connection_t *c, uint32_t event)
 {
     if (!routine) {
         return AGC_STATUS_GENERR;
     }
     
-    return routine->add(routin, event);
+    return routine->add(c, event);
 }
 
-AGC_DECLARE(agc_status_t)  agc_diver_del_event(agc_routine_t *routin, uint32_t event)
+AGC_DECLARE(agc_status_t)  agc_diver_del_event(agc_connection_t *c, uint32_t event)
 {
     if (!routine) {
         return AGC_STATUS_GENERR;
     }
     
-    return routine->del(routin, event);
+    return routine->del(c, event);
 }
 

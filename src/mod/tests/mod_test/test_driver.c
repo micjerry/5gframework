@@ -1,12 +1,16 @@
 #include "mod_test.h"
 
+/*
+epoll_client.c to test driver
+*/
+
 #define TEST_DRIVER_LOCALADDR "127.0.0.1"
 #define TEST_DRIVER_LOCALPORT 9000
-#define TEST_MAX_BUFFER 1024
+#define TEST_MAX_BUFFER 2048
 
 typedef struct {
 	int intvalue;
-	char *strvalue;
+	char buf[TEST_MAX_BUFFER];
 } test_driver_context_t;
 
 static agc_std_socket_t socket_bind(struct sockaddr* addr);
@@ -161,16 +165,26 @@ static void handle_read(void *data)
 {
 	agc_connection_t *connection = (agc_connection_t *)data;
 	int reads = 0;
-	char buf[TEST_MAX_BUFFER];
+	int writes = 0;
+	test_driver_context_t *context = NULL;
+
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "handle_read enter.\n");
 
 	if (!connection) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "invalid connection read failed .\n");
 		return;
 	}
+
+	context = connection->context;
+
+	if (!context) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "invalid connection no context .\n");
+		return;
+	}
 	
-	memset(buf, 0, TEST_MAX_BUFFER);
+	memset(context->buf, 0, TEST_MAX_BUFFER);
 	
-	reads = read(connection->fd, buf, TEST_MAX_BUFFER);
+	reads = read(connection->fd, context->buf, TEST_MAX_BUFFER);
 
 	if (reads == -1 || reads == 0) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "read socket exception .\n");
@@ -180,12 +194,14 @@ static void handle_read(void *data)
 		return;
 	}
 
+	agc_diver_add_event(connection, AGC_WRITE_EVENT);
+
 	if (reads < TEST_MAX_BUFFER) {
-		agc_log_printf(AGC_LOG, AGC_LOG_INFO, "read message %s .\n", buf);
+		agc_log_printf(AGC_LOG, AGC_LOG_INFO, "read message %s .\n", context->buf);
 	} else {
 		//clear left data
 		while (reads > 0) {
-			reads = read(connection->fd, buf, TEST_MAX_BUFFER);
+			reads = read(connection->fd, context->buf, TEST_MAX_BUFFER);
 			if (reads == -1) {
 				agc_diver_del_connection(connection);
 				close(connection->fd);
@@ -198,9 +214,36 @@ static void handle_read(void *data)
 
 static void handle_write(void *data)
 {
+	int writes = 0;
 	agc_connection_t *connection = (agc_connection_t *)data;
+	test_driver_context_t *context = NULL;
 
-	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "connection %d can write .\n", connection->fd);
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "handle_write enter .\n");
+
+	if (!connection) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "read message %s .\n", context->buf);
+		return;
+	}
+
+	context = connection->context;
+
+	if (!context) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "invalid connection no context .\n");
+		return;
+	}
+	
+	if (strlen(context->buf) > 0) {
+		if (write(connection->fd, context->buf, strlen(context->buf)) == -1) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "write failed %d.\n",  connection->fd);
+			agc_diver_del_connection(connection);
+			close(connection->fd);
+			agc_memory_destroy_pool(&connection->pool);
+			return;
+		} 
+	}
+
+	agc_diver_del_event(connection, AGC_WRITE_EVENT);
+	
 }
 
 static void handle_error(void *data)
