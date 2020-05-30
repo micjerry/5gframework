@@ -39,10 +39,11 @@ AGC_DECLARE(agc_status_t) agc_conn_init(agc_memory_pool_t *pool);
 
 AGC_DECLARE(agc_status_t) agc_conn_shutdown(void);
 
-AGC_DECLARE(agc_listening_t *) agc_conn_create_listening(agc_std_sockaddr_t *addr, 
-                                                         int addrlen, 
-                                                         agc_memory_pool_t *pool,
-                                                         agc_connection_handler_func handler);
+AGC_DECLARE(agc_listening_t *) agc_conn_create_listening(agc_std_socket_t s,
+									agc_std_sockaddr_t *addr, 
+									int addrlen, 
+									agc_memory_pool_t *pool,
+									agc_connection_handler_func handler);
 
 AGC_DECLARE(agc_connection_t *) agc_conn_create_connection(agc_std_socket_t s, 
                                                       agc_std_sockaddr_t *addr, 

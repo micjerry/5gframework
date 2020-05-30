@@ -26,10 +26,11 @@ AGC_DECLARE(agc_status_t) agc_conn_shutdown(void)
 	return AGC_STATUS_SUCCESS;
 }
 
-AGC_DECLARE(agc_listening_t *) agc_conn_create_listening(agc_std_sockaddr_t *addr, 
-                                                         int addrlen, 
-                                                         agc_memory_pool_t *pool,
-                                                         agc_connection_handler_func handler)
+AGC_DECLARE(agc_listening_t *) agc_conn_create_listening(agc_std_socket_t s,
+									agc_std_sockaddr_t *addr, 
+									int addrlen, 
+									agc_memory_pool_t *pool,
+									agc_connection_handler_func handler)
 {
 	agc_listening_t *listening;
 	struct sockaddr *sa;
@@ -48,7 +49,7 @@ AGC_DECLARE(agc_listening_t *) agc_conn_create_listening(agc_std_sockaddr_t *add
 	listening->sockaddr = sa;
 	listening->addrlen = addrlen;
 	listening->handler = handler;
-	listening->fd = (agc_std_socket_t)-1;
+	listening->fd = s;
 	listening->pool = pool;
 
 	return listening;

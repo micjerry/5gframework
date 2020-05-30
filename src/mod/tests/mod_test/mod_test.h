@@ -27,5 +27,6 @@ void test_driver_api(agc_stream_handle_t *stream, int argc, char **argv);
 void test_event_api(agc_stream_handle_t *stream, int argc, char **argv);
 void test_mq_api(agc_stream_handle_t *stream, int argc, char **argv);
 void test_timer_api(agc_stream_handle_t *stream, int argc, char **argv);
+void test_db_api(agc_stream_handle_t *stream, int argc, char **argv);
 
 #endif

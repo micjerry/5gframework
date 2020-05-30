@@ -9,7 +9,8 @@ test_api_command_t test_api_commands[] = {
 	{"driver", test_driver_api, "driver", ""},
 	{"event", test_event_api, "event", ""},
 	{"mq", test_mq_api, "mq", ""},
-	{"timer", test_timer_api, "timer", ""}
+	{"timer", test_timer_api, "timer", ""},
+	{"db", test_timer_api, "db", ""}
 };
 
 AGC_STANDARD_API(test_api_main)

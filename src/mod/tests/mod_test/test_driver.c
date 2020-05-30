@@ -1,7 +1,7 @@
 #include "mod_test.h"
 
 /*
-epoll_client.c to test driver
+epoll_client.c as the client to test driver
 */
 
 #define TEST_DRIVER_LOCALADDR "127.0.0.1"
@@ -53,7 +53,7 @@ void test_driver_listen(agc_stream_handle_t *stream)
 		return;
 	}
 
-	listening = agc_conn_create_listening((agc_std_sockaddr_t *)&servaddr, 
+	listening = agc_conn_create_listening(listenfd, (agc_std_sockaddr_t *)&servaddr, 
 							sizeof(servaddr), 
 							pool,
 							handle_newconnection);
@@ -65,7 +65,6 @@ void test_driver_listen(agc_stream_handle_t *stream)
 		return;
 	}
 
-	listening->fd = listenfd;
 	listen(listening->fd, 10);
 
 	connection = agc_conn_get_connection(listening);
