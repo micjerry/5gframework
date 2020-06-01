@@ -186,7 +186,9 @@ AGC_DECLARE(agc_db_t *) agc_db_open_file(const char *filename)
 
 	memset(path, 0, sizeof(path));
 
-	agc_snprintf(path, sizeof(path), "%s%s%s.db", AGC_GLOBAL_dirs.db_dir, AGC_PATH_SEPARATOR, filename);
+	agc_snprintf(path, sizeof(path), "%s%s%s", AGC_GLOBAL_dirs.db_dir, AGC_PATH_SEPARATOR, filename);
+
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "LOAD DB  PATH [%s]\n", path);
 	
 	if ((db_ret = agc_db_open(path, &db)) != SQLITE_OK) {
 		failed = 1;

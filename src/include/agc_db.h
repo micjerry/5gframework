@@ -46,10 +46,13 @@ AGC_DECLARE(int) agc_db_open(const char *filename, agc_db_t **ppdb);
  */
 AGC_DECLARE(int) agc_db_close(agc_db_t *db);
 
+AGC_DECLARE(const char *) agc_db_errmsg(agc_db_t *db);
+
 /**
  * The first parameter is a compiled SQL statement. This function returns
  * the column heading for the Nth column of that statement, where N is the
  * second function parameter.  The string returned is UTF-8.
+ * The leftmost column of the result set has the index 0
  */
 AGC_DECLARE(const char *) agc_db_column_name(agc_db_stmt_t *stmt, int N);
 
@@ -60,7 +63,6 @@ AGC_DECLARE(const char *) agc_db_column_name(agc_db_stmt_t *stmt, int N);
  */
 AGC_DECLARE(int) agc_db_column_count(agc_db_stmt_t *stmt);
 
-AGC_DECLARE(const char *) agc_db_errmsg(agc_db_t *db);
 
 /**
  *    Internal Type    Requested Type     Conversion
@@ -71,6 +73,7 @@ AGC_DECLARE(const char *) agc_db_errmsg(agc_db_t *db);
  *       BLOB             TEXT            Add a "\000" terminator if needed
  *
  *  Return the value as UTF-8 text.
+ * The leftmost column of the result set has the index 0
  */
 AGC_DECLARE(const unsigned char *) agc_db_column_text(agc_db_stmt_t *stmt, int iCol);
 
@@ -82,10 +85,11 @@ AGC_DECLARE(const unsigned char *) agc_db_column_text(agc_db_stmt_t *stmt, int i
  *       FLOAT            BLOB            CAST to BLOB
  *       TEXT              BLOB            No change
  *
+ * The leftmost column of the result set has the index 0
  */
 AGC_DECLARE(const void *) agc_db_column_blob(agc_db_stmt_t *stmt, int iCol);
 
-//Return the size of text or blob
+//Return the size of text or blob, The leftmost column of the result set has the index 0
 AGC_DECLARE(int) agc_db_column_bytes(agc_db_stmt_t *stmt, int iCol);
 
 /**
@@ -96,6 +100,7 @@ AGC_DECLARE(int) agc_db_column_bytes(agc_db_stmt_t *stmt, int iCol);
  *       TEXT             INTEGER         Use atoi()
  *       BLOB            INTEGER         Convert to TEXT then use atoi()
  *
+ * The leftmost column of the result set has the index 0
  */
 AGC_DECLARE(int) agc_db_column_int(agc_db_stmt_t *stmt, int iCol);
 
@@ -237,7 +242,7 @@ AGC_DECLARE(int) agc_db_reset(agc_db_stmt_t *stmt);
  *
  * In every case, the first parameter is a pointer to the sqlite3_stmt
  * structure returned from agc_db_prepare().  The second parameter is the
- * index of the parameter.  The first parameter as an index of 1.  For
+ * index of the parameter.  The leftmost SQL parameter has an index of 1.  For
  * named parameters (":AAA" or "$VVV") you can use 
  * agc_db_bind_parameter_index() to get the correct index value given
  * the parameters name.  If the same named parameter occurs more than
