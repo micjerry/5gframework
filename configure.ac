@@ -150,8 +150,7 @@ path_push_unique () {
   fi
 }
 
-path_push_unique PKG_CONFIG_PATH /usr/local/lib/pkgconfig
-path_push_unique PKG_CONFIG_PATH /usr/local/share/pkgconfig
+path_push_unique PKG_CONFIG_PATH /usr/local/lib/pkgconfig:/usr/local/share/pkgconfig
 
 #######################################
 ####  Checks for gcc and headers.  ####
