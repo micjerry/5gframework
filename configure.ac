@@ -151,6 +151,7 @@ path_push_unique () {
 }
 
 path_push_unique PKG_CONFIG_PATH /usr/local/lib/pkgconfig
+path_push_unique PKG_CONFIG_PATH /usr/local/share/pkgconfig
 
 #######################################
 ####  Checks for gcc and headers.  ####
@@ -333,6 +334,8 @@ PKG_CHECK_MODULES([SQLITE], [sqlite3 >= 3.6.20])
 PKG_CHECK_MODULES([HIREDIS_VIP], [hiredis_vip >= 1.0.0],[
   AM_CONDITIONAL([HAVE_HIREDIS_VIP],[true])],[
   AC_MSG_RESULT([no]); AM_CONDITIONAL([HAVE_HIREDIS_VIP],[false])])
+
+PKG_CHECK_MODULES([NGAPCODEC], [ngapcodec-15.3.0 >= 15.3.0])
 
 AC_SUBST(YAML_CFLAGS)
 AC_SUBST(YAML_LIBS)
