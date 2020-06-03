@@ -1,6 +1,8 @@
 #ifndef AGC_RBTREE_H
 #define AGC_RBTREE_H
 
+AGC_BEGIN_EXTERN_C
+
 /*
 nginx rbtree
 */
@@ -65,5 +67,6 @@ agc_rbtree_min(agc_rbtree_node_t *node, agc_rbtree_node_t *sentinel)
     return node;
 }
 
+AGC_END_EXTERN_C
 
 #endif

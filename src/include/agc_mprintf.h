@@ -13,6 +13,8 @@
 #ifndef AGC_MPRINTF_H
 #define AGC_MPRINTF_H
 
+AGC_BEGIN_EXTERN_C
+
 /**
  * This routine is a variant of the "sprintf()" from the
  * standard C library.  The resulting string is written into memory
@@ -57,5 +59,7 @@
 AGC_DECLARE(char *) agc_mprintf(const char *zFormat, ...);
 AGC_DECLARE(char *) agc_vmprintf(const char *zFormat, va_list ap);
 AGC_DECLARE(char *) agc_snprintfv(char *zBuf, int n, const char *zFormat, ...);
+
+AGC_END_EXTERN_C
 
 #endif 

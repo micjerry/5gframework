@@ -1,6 +1,8 @@
 #ifndef AGC_PLATFORM_H
 #define AGC_PLATFORM_H
 
+AGC_BEGIN_EXTERN_C
+
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -44,5 +46,6 @@ typedef int32_t agc_int32_t;
 
 #define __AGC_FUNC__ (const char *)__func__
 
+AGC_END_EXTERN_C
 
 #endif

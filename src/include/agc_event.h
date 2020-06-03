@@ -3,6 +3,8 @@
 
 #include <agc.h>
 
+AGC_BEGIN_EXTERN_C
+
 #define EVENT_NULL_SOURCEID 0
 #define EVENT_ID_LIMIT 1024
 
@@ -104,5 +106,7 @@ AGC_DECLARE(agc_status_t) agc_event_fire(agc_event_t **event);
 AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON **json);
 
 AGC_DECLARE(agc_status_t) agc_event_serialize_json(agc_event_t *event, char **str);
+
+AGC_END_EXTERN_C
 
 #endif

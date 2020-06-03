@@ -3,6 +3,8 @@
 
 #include <agc.h>
 
+AGC_BEGIN_EXTERN_C
+
 typedef enum {
 	AGC_ID_LOG,
 	AGC_ID_SESSION
@@ -48,6 +50,7 @@ AGC_DECLARE(agc_log_level_t) agc_log_str2level(const char *str);
 
 AGC_DECLARE(agc_log_node_t *) agc_log_node_dup(const agc_log_node_t *node);
 AGC_DECLARE(void) agc_log_node_free(agc_log_node_t **pnode);
-                                
+     
+AGC_END_EXTERN_C	 
 
 #endif

@@ -2,6 +2,9 @@
 #define AGC_UTILS_H
 
 #include <agc.h>
+
+AGC_BEGIN_EXTERN_C
+
 #include <math.h>
 
 #define agc_yield(ms) agc_sleep(ms);
@@ -210,5 +213,7 @@ static inline int agc_true(const char *expr)
 
 AGC_DECLARE(char *) get_addr(char *buf, agc_size_t len, struct sockaddr *sa, socklen_t salen);
 AGC_DECLARE(char *) get_addr6(char *buf, agc_size_t len, struct sockaddr_in6 *sa, socklen_t salen);
+
+AGC_END_EXTERN_C
 
 #endif

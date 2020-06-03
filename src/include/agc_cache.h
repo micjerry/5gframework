@@ -3,6 +3,8 @@
 
 #include <agc.h>
 
+AGC_BEGIN_EXTERN_C
+
 #define AGC_NULL_EXPIRE 0
 
 struct keys_s {
@@ -71,5 +73,7 @@ AGC_DECLARE(void) agc_cache_register_impl(agc_cache_actions_t *actions);
 AGC_DECLARE(void)  agc_cache_free_keyvalues(keyvalues_t **keyvalues);
 
 AGC_DECLARE(void) agc_cache_free_keys(keys_t **keys);
+
+AGC_END_EXTERN_C
 
 #endif

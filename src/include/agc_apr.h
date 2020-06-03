@@ -1,6 +1,8 @@
 #ifndef AGC_APR_H
 #define AGC_APR_H
 
+AGC_BEGIN_EXTERN_C
+
 #include "agc_types.h"
 #include <pthread.h>
 typedef pthread_t agc_thread_id_t;
@@ -1275,5 +1277,7 @@ AGC_DECLARE(int) agc_hash_do(agc_hash_do_callback_fn_t *comp, void *rec, const a
 
 //Get a pointer to the pool which the hash table was created in.
 AGC_DECLARE(agc_memory_pool_t *) agc_hash_pool_get (const agc_hash_t *thehash);
+
+AGC_END_EXTERN_C
 
 #endif

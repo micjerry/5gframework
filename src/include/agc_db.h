@@ -1,8 +1,10 @@
 #ifndef AGC_DB_H
 #define AGC_DB_H
 
-#include <sqlite3.h>
 #include <agc.h>
+
+AGC_BEGIN_EXTERN_C
+#include <sqlite3.h>
 
 #define MAX_DB_RETRIES 5
 
@@ -425,5 +427,6 @@ AGC_DECLARE(agc_status_t) agc_db_persistant_execute(agc_db_t *db, char *sql, uin
 
 AGC_DECLARE(agc_status_t) agc_db_persistant_execute_trans(agc_db_t *db, char *sql, uint32_t retries);
 
+AGC_END_EXTERN_C
 
 #endif

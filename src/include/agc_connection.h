@@ -1,6 +1,8 @@
 #ifndef AGC_CONNECTION_H
 #define AGC_CONNECTION_H
 
+AGC_BEGIN_EXTERN_C
+
 struct agc_connection_s {
     //service context
     void *context;
@@ -57,5 +59,7 @@ AGC_DECLARE(agc_connection_t *) agc_conn_create_connection(agc_std_socket_t s,
 AGC_DECLARE(agc_connection_t *)  agc_conn_get_connection(agc_listening_t *listening);
 
 AGC_DECLARE(void) agc_free_connection(agc_connection_t *c);
+
+AGC_END_EXTERN_C
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef AGC_API_H
 #define AGC_API_H
 
+AGC_BEGIN_EXTERN_C
+
 #define AGC_CMD_CHUNK_LEN 1024
 
 #define AGC_STANDARD_API(name) static agc_status_t name (const char *cmd, agc_stream_handle_t *stream)
@@ -50,5 +52,7 @@ AGC_DECLARE(void) agc_api_stand_stream(agc_stream_handle_t *stream);
 AGC_DECLARE(agc_status_t) agc_api_stream_write(agc_stream_handle_t *handle, const char *fmt, ...);
 
 AGC_DECLARE(agc_status_t) agc_api_stream_raw_write(agc_stream_handle_t *handle, uint8_t *data, agc_size_t datalen);
+
+AGC_END_EXTERN_C
 
 #endif

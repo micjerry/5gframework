@@ -3,6 +3,8 @@
 
 #include <agc.h>
 
+AGC_BEGIN_EXTERN_C
+
 #define __AGC_FUNC__ (const char *)__func__
 
 #define AGC_SEQ_ESC "\033["
@@ -183,5 +185,7 @@ typedef void (*agc_event_callback_func)(void *data);
 
 typedef struct keyvalues_s keyvalues_t;
 typedef struct keys_s keys_t;
+
+AGC_END_EXTERN_C
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef AGC_DRIVER_H
 #define AGC_DRIVER_H
 
+AGC_BEGIN_EXTERN_C
+
 #define AGC_READ_EVENT     (EPOLLIN|EPOLLRDHUP)
 #define AGC_WRITE_EVENT     EPOLLOUT
 
@@ -35,5 +37,7 @@ AGC_DECLARE(agc_status_t) agc_diver_del_connection(agc_connection_t *c);
 AGC_DECLARE(agc_status_t)  agc_diver_add_event(agc_connection_t *c, uint32_t event);
 
 AGC_DECLARE(agc_status_t)  agc_diver_del_event(agc_connection_t *c, uint32_t event);
+
+AGC_END_EXTERN_C
 
 #endif

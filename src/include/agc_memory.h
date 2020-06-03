@@ -1,6 +1,8 @@
 #ifndef AGC_MEMORY_H
 #define AGC_MEMORY_H
 
+AGC_BEGIN_EXTERN_C
+
 AGC_DECLARE(void) agc_memory_pool_tag(agc_memory_pool_t *pool, const char *tag);
 
 AGC_DECLARE(agc_status_t) agc_memory_create_pool(agc_memory_pool_t **pool);
@@ -14,5 +16,7 @@ AGC_DECLARE(void) agc_memory_pool_set_data(agc_memory_pool_t *pool, const char *
 AGC_DECLARE(void *) agc_memory_pool_get_data(agc_memory_pool_t *pool, const char *key);
 
 AGC_DECLARE(void *) agc_memory_permanent_alloc(agc_size_t memsize);
+
+AGC_END_EXTERN_C
 
 #endif

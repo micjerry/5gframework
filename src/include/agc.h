@@ -1,6 +1,14 @@
 #ifndef AGC_FUCK_H
 #define AGC_FUCK_H
 
+#ifdef __cplusplus
+#define AGC_BEGIN_EXTERN_C       extern "C" {
+#define AGC_END_EXTERN_C         }
+#else
+#define AGC_BEGIN_EXTERN_C
+#define AGC_END_EXTERN_C
+#endif
+
 #include <agc_am_config.h>
 
 #include <pthread.h>

@@ -3,6 +3,8 @@
 
 #include <agc.h>
 
+AGC_BEGIN_EXTERN_C
+
 typedef agc_rbtree_key_t  agc_msec_t;
 typedef agc_rbtree_key_int_t  agc_msec_int_t;
 
@@ -16,5 +18,7 @@ AGC_DECLARE(void) agc_timer_del_timer(agc_event_t *ev);
 AGC_DECLARE(void) agc_timer_add_timer(agc_event_t *ev, agc_msec_t timer);
 
 AGC_DECLARE(agc_time_t) agc_timer_curtime();
+
+AGC_END_EXTERN_C
 
 #endif

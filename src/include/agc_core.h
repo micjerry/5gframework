@@ -1,6 +1,8 @@
 #ifndef AGC_CORE_H
 #define AGC_CORE_H
 
+AGC_BEGIN_EXTERN_C
+
 #define AGC_MAX_CORE_THREAD_OBJS 128
 
 // global directories
@@ -68,5 +70,7 @@ AGC_DECLARE(agc_status_t) agc_core_modload(const char **err);
 AGC_DECLARE(const char *) agc_core_get_hostname(void);
 
 AGC_DECLARE(void) agc_core_set_signal_handlers(void);
-                                             
+
+AGC_END_EXTERN_C
+                                          
 #endif
