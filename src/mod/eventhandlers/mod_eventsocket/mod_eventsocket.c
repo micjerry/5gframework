@@ -373,6 +373,7 @@ static void *connection_run(agc_thread_t *thread, void *obj)
 			}
 			len = strlen(buf);
 			agc_socket_send(conn->sock, buf, &len);
+			agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "command reply send.\n");
 		} 
 	}
     

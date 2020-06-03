@@ -1319,11 +1319,11 @@ int main(int argc, char *argv[])
 	int argv_use_history_file = 1;
 	int use_history_file = 0;
 #ifndef WIN32
-	char hfile[512] = "/tmp/fs_cli_history";
+	char hfile[512] = "/tmp/agc_cli_history";
 	char cfile[512] = "/etc/fs_cli.conf";
 	char dft_cfile[512] = "/etc/fs_cli.conf";
 #else
-	char hfile[512] = "fs_cli_history";
+	char hfile[512] = "agc_cli_history";
 	char cfile[512] = "fs_cli.conf";
 	char dft_cfile[512] = "fs_cli.conf";
 #endif
@@ -1406,8 +1406,8 @@ int main(int argc, char *argv[])
 	esl_set_string(internal_profile.output_text_color, output_text_color);
 	internal_profile.use_history_file = 1;
 	if (home) {
-		snprintf(hfile, sizeof(hfile), "%s/.fs_cli_history", home);
-		snprintf(cfile, sizeof(cfile), "%s/.fs_cli_conf", home);
+		snprintf(hfile, sizeof(hfile), "%s/.agc_cli_history", home);
+		snprintf(cfile, sizeof(cfile), "%s/.agc_cli_conf", home);
 	}
 	signal(SIGINT, handle_SIGINT);
 #ifdef SIGTSTP
