@@ -174,7 +174,9 @@ typedef enum {
 #define AGC_BLANK_STRING ""
 
 typedef int agc_std_socket_t;
-typedef struct sockaddr agc_std_sockaddr_t;
+//typedef struct sockaddr agc_std_sockaddr_t;
+typedef struct  sockaddr_storage agc_std_sockaddr_t;
+
 typedef struct agc_connection_s agc_connection_t;
 typedef struct agc_routine_s agc_routine_t;
 typedef struct agc_listening_s agc_listening_t;

@@ -162,6 +162,7 @@ dnl Checks CC
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC
+AC_PROG_CXX
 AC_PROG_INSTALL
 AM_PROG_AR
 
@@ -414,7 +415,8 @@ AC_CONFIG_FILES([Makefile
         src/mod/dbs/mod_sqlite/Makefile
         src/mod/mqs/mod_rabbitmq/Makefile
         src/mod/eventhandlers/mod_eventsocket/Makefile
-        src/mod/tests/mod_test/Makefile])
+        src/mod/tests/mod_test/Makefile
+        src/mod/gateways/mod_sig/Makefile])
 AC_OUTPUT
 
 echo 

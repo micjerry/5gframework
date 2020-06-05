@@ -33,7 +33,7 @@ AGC_DECLARE(agc_listening_t *) agc_conn_create_listening(agc_std_socket_t s,
 									agc_connection_handler_func handler)
 {
 	agc_listening_t *listening;
-	struct sockaddr *sa;
+	agc_std_sockaddr_t *sa;
 	assert(pool);
 
 	listening = agc_memory_alloc(pool, sizeof(agc_listening_t));
@@ -64,7 +64,7 @@ AGC_DECLARE(agc_connection_t *) agc_conn_create_connection(agc_std_socket_t s,
                                                       agc_event_callback_func write,
                                                       agc_event_callback_func err)
 {
-	struct sockaddr *sa;
+	agc_std_sockaddr_t *sa;
 	agc_connection_t *new_connection;
 	agc_routine_t *routine;
 
