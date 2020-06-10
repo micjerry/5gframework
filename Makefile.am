@@ -143,7 +143,7 @@ agc_LDADD   = libagc.la libs/apr/libapr-1.la
 ##
 ## Dependency targets
 ##
-libs/apr/Makefile: libs/apr/Makefile.in libs/apr/config.status libs/apr
+libs/apr/Makefile: libs/apr/Makefile.in libs/apr/config.status
 	@cd libs/apr && ./config.status
 	@$(TOUCH_TARGET)
 
