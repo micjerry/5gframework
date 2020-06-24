@@ -8,19 +8,19 @@ static agc_status_t parse_and_exec(char *xcmd);
 
 AGC_DECLARE(agc_status_t) agc_api_init(agc_memory_pool_t *pool)
 {
-    assert(pool);
-    RUNTIME_POOL = pool;
-    
-    agc_mutex_init(&APIS_MUTEX, AGC_MUTEX_NESTED, RUNTIME_POOL);
-    
-    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Api init success.\n");
-    return AGC_STATUS_SUCCESS;
+	assert(pool);
+	RUNTIME_POOL = pool;
+
+	agc_mutex_init(&APIS_MUTEX, AGC_MUTEX_NESTED, RUNTIME_POOL);
+
+	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Api init success.\n");
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_api_shutdown(void)
 {
-    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Api shutdown success.\n");
-    return AGC_STATUS_SUCCESS;
+	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Api shutdown success.\n");
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_api_register(const char *name, const char *desc, const char *syntax, agc_api_func func)
@@ -55,21 +55,21 @@ AGC_DECLARE(agc_status_t) agc_api_register(const char *name, const char *desc, c
 
 AGC_DECLARE(agc_api_interface_t *) agc_api_find(const char *cmd)
 {
-    agc_api_interface_t *api = NULL;
-    agc_api_interface_t *result = NULL;
-    
-    agc_mutex_lock(APIS_MUTEX);
-    
-    for (api = APIS; api != NULL; api = api->next) {
-        if (!strcasecmp(api->name, cmd)) {
-            result = api;
-            break;
-        }
-    }
-    
-    agc_mutex_unlock(APIS_MUTEX);
-    
-    return result;
+	agc_api_interface_t *api = NULL;
+	agc_api_interface_t *result = NULL;
+
+	agc_mutex_lock(APIS_MUTEX);
+
+	for (api = APIS; api != NULL; api = api->next) {
+		if (!strcasecmp(api->name, cmd)) {
+			result = api;
+			break;
+		}
+	}
+
+	agc_mutex_unlock(APIS_MUTEX);
+
+	return result;
 }
 
 AGC_DECLARE(agc_status_t) agc_api_execute(const char *cmd, const char *arg, agc_stream_handle_t *stream)
@@ -97,6 +97,7 @@ AGC_DECLARE(agc_status_t) agc_api_execute(const char *cmd, const char *arg, agc_
 
 static agc_status_t parse_and_exec(char *xcmd)
 {
+	char *uuid = NULL;
 	char *cmd =NULL;
 	char *arg = NULL;
 	agc_status_t status;
@@ -107,20 +108,33 @@ static agc_status_t parse_and_exec(char *xcmd)
 		return AGC_STATUS_FALSE;
 
 	agc_api_stand_stream(&stream);
-	cmd = strdup(xcmd);
+	uuid = strdup(xcmd);
 
-	if ((arg = strchr(cmd, '\r')) != 0 || (arg = strchr(cmd, '\n')) != 0) {
+	if ((arg = strchr(uuid, '\r')) != 0 || (arg = strchr(uuid, '\n')) != 0) {
 		*arg = '\0';
 		arg = NULL;
 	}
 	
+	if ((cmd = strchr(uuid, ' ')) != 0) {
+		*cmd++ = '\0';
+	}
+
 	if ((arg = strchr(cmd, ' ')) != 0) {
 		*arg++ = '\0';
 	}
 
+	if (!cmd) {
+		agc_safe_free(uuid);
+		agc_safe_free(stream.data);
+		return AGC_STATUS_FALSE;
+	}
+
+	stream.uuid = strdup(uuid);
+
 	status = agc_api_execute(cmd, arg, &stream);
 	agc_safe_free(stream.data);
-	agc_safe_free(cmd);
+	agc_safe_free(uuid);
+	agc_safe_free(stream.uuid);
 
 	return AGC_STATUS_SUCCESS;
 }
@@ -163,6 +177,7 @@ AGC_DECLARE(void) agc_api_stand_stream(agc_stream_handle_t *stream)
 	stream->raw_write_function = agc_api_stream_raw_write;
 	stream->alloc_len = AGC_CMD_CHUNK_LEN;
 	stream->alloc_chunk = AGC_CMD_CHUNK_LEN;
+	stream->uuid = NULL;
 }
 
 AGC_DECLARE(agc_status_t) agc_api_stream_write(agc_stream_handle_t *handle, const char *fmt, ...)

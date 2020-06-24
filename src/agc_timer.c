@@ -55,22 +55,23 @@ AGC_DECLARE(void) agc_timer_del_timer(agc_event_t *ev)
 
 AGC_DECLARE(void) agc_timer_add_timer(agc_event_t *ev, agc_msec_t timer)
 {
-    agc_msec_t      key;
-    agc_time_t current_ms = (current_time / 1000);
+	agc_msec_t      key;
+	current_time = agc_time_now();
+	agc_time_t current_ms = (current_time / 1000);
 
-    key = current_ms + timer;
+	key = current_ms + timer;
     
-    if (ev->timer_set) {
-        agc_timer_del_timer(ev);
-    }
+	if (ev->timer_set) {
+		agc_timer_del_timer(ev);
+	}
     
-    ev->timer.key = key;
+	ev->timer.key = key;
     
-    agc_mutex_lock(TIMER_RBTREE_MUTEX);
-    agc_rbtree_insert(&agc_timer_rbtree, &ev->timer);
-    agc_mutex_unlock(TIMER_RBTREE_MUTEX);
+	agc_mutex_lock(TIMER_RBTREE_MUTEX);
+	agc_rbtree_insert(&agc_timer_rbtree, &ev->timer);
+	agc_mutex_unlock(TIMER_RBTREE_MUTEX);
 
-    ev->timer_set = 1;
+	ev->timer_set = 1;
 }
 
 AGC_DECLARE(agc_time_t) agc_timer_curtime()
@@ -98,45 +99,46 @@ static void agc_timer_launch_dispatch_thread()
 
 static void *agc_timer_dispatch_timer(agc_thread_t *thread, void *obj)
 {
-    agc_rbtree_t *timertree = (agc_rbtree_t *)obj;  
-    agc_event_t        *ev;
-    agc_rbtree_node_t  *node, *root, *sentinel;
-    agc_time_t current_ms;
+	agc_rbtree_t *timertree = (agc_rbtree_t *)obj;  
+	agc_event_t        *ev;
+	agc_rbtree_node_t  *node, *root, *sentinel;
+	agc_time_t current_ms;
+
+	SYSTEM_RUNNING = 1;
+	SYSTEM_SHUTDOWN = 0;
+
+	sentinel = timertree->sentinel;
+	for ( ;; ) {
+		current_time = agc_time_now();
+		current_ms = (current_time / 1000);
+		if (!SYSTEM_RUNNING)
+			break;
+
+		root = timertree->root;
+		if (root == sentinel) {
+			agc_os_yield();
+			continue;
+		}
+
+		agc_mutex_lock(TIMER_RBTREE_MUTEX);
+		node = agc_rbtree_min(root, sentinel);
+		agc_mutex_unlock(TIMER_RBTREE_MUTEX);
+
+		if ((agc_msec_int_t) (node->key - current_ms) > 0) {
+			agc_os_yield();
+			continue;
+		}
+
+		ev = (agc_event_t *) ((char *) node - offsetof(agc_event_t, timer));
+		ev->timer_set = 0;
+
+		agc_mutex_lock(TIMER_RBTREE_MUTEX);
+		agc_rbtree_delete(timertree, &ev->timer);
+		agc_mutex_unlock(TIMER_RBTREE_MUTEX);
+		agc_event_fire(&ev);
+
+	}
     
-    SYSTEM_RUNNING = 1;
-    SYSTEM_SHUTDOWN = 0;
-    
-    sentinel = timertree->sentinel;
-    for ( ;; ) {
-        current_time = agc_time_now();
-        current_ms = (current_time / 1000);
-        if (!SYSTEM_RUNNING)
-            break;
-        
-        root = timertree->root;
-        if (root == sentinel) {
-            agc_os_yield();
-            continue;
-        }
-        
-        agc_mutex_lock(TIMER_RBTREE_MUTEX);
-        node = agc_rbtree_min(root, sentinel);
-        agc_mutex_unlock(TIMER_RBTREE_MUTEX);
-        
-        if ((agc_msec_int_t) (node->key - current_ms) > 0) {
-            agc_os_yield();
-            continue;
-        }
-        
-        ev = (agc_event_t *) ((char *) node - offsetof(agc_event_t, timer));
-        ev->timer_set = 0;
-        
-        agc_mutex_lock(TIMER_RBTREE_MUTEX);
-        agc_rbtree_delete(timertree, &ev->timer);
-        agc_mutex_unlock(TIMER_RBTREE_MUTEX);
-        agc_event_fire(&ev);
-    }
-    
-    SYSTEM_SHUTDOWN = 1;
+	SYSTEM_SHUTDOWN = 1;
 }
 

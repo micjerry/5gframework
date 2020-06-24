@@ -20,7 +20,6 @@ agc_status_t agcmq_load_config()
 	char buffer[256];
 	const char *fname;
 	const char *fname_ext;
-	agc_status_t status;
 	char *pname;
 	char *ptype;
 	agcmq_connection_info_t *conn;
@@ -28,15 +27,15 @@ agc_status_t agcmq_load_config()
 	
 	if (agc_memory_create_pool(&loop_pool) != AGC_STATUS_SUCCESS) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc dir memory failed.\n");
-		return;
+		return AGC_STATUS_GENERR;
 	}
 
 	dir_path = agc_mprintf("%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, AGCMQ_CFG_PATH);
 	
-	if ((status = agc_dir_open(&dir, dir_path, loop_pool)) != AGC_STATUS_SUCCESS) {
+	if (agc_dir_open(&dir, dir_path, loop_pool) != AGC_STATUS_SUCCESS) {
 		agc_memory_destroy_pool(&loop_pool);
 		agc_safe_free(dir_path);
-		return status;
+		return AGC_STATUS_GENERR;
 	}
 
 	while((fname = agc_dir_next_file(dir, buffer, sizeof(buffer)))) {

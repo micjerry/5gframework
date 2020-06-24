@@ -51,7 +51,8 @@ CORE_CFLAGS  = $(AM_LIBAPR_CFLAGS) $(AM_LIBAPR_CPPFLAGS)
 CORE_CFLAGS += $(AM_LIBAPU_CPPFLAGS)
 
 AM_CFLAGS   = $(AGC_AM_CFLAGS) $(YAML_CFLAGS) $(SQLITE_CFLAGS)
-AM_CPPFLAGS = $(AGC_AM_CXXFLAGS)
+AM_CXXFLAGS = $(AGC_AM_CXXFLAGS)
+AM_CPPFLAGS = $(AGC_AM_CPPFLAGS)
 AM_LDFLAGS  = $(AGC_AM_LDFLAGS) $(AM_LIBAPR_LDFLAGS) $(AM_LIBAPU_LDFLAGS)
 
 ##
@@ -84,6 +85,7 @@ library_include_HEADERS = \
 	src/include/agc_api.h \
 	src/include/agc_cache.h \
 	src/include/agc_db.h \
+	src/include/agc_sctp.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -109,6 +111,7 @@ libagc_la_SOURCES = \
 	src/agc_api.c \
 	src/agc_cache.c \
 	src/agc_db.c \
+	src/agc_sctp.c \
 	$(NULL)
 
 $(libagc_la_SOURCES): $(CORE_LIBS) $(agc_builddir)/modules.conf  

@@ -27,6 +27,8 @@ AGC_MODULE_LOAD_FUNCTION(mod_test_load)
 
 	agc_api_register("test", "test API", "syntax", test_api_main);
 
+	test_timer_api(NULL, 0, NULL);
+
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Test init success.\n");
 
 	return AGC_STATUS_SUCCESS;

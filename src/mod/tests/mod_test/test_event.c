@@ -528,7 +528,7 @@ static void bind_callback(void *data)
 		return;
 
 	header = agc_event_get_header(event, TEST_HEADER_NAME);
-	if (header) {
+	if (header) {
 		agc_log_printf(AGC_LOG, AGC_LOG_INFO, "bind_callback received event header %s.\n", header);
 	}
 	

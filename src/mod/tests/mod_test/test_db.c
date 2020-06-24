@@ -12,7 +12,7 @@ typedef struct test_db_command {
 static agc_status_t test_db_exec(agc_stream_handle_t *stream);
 static agc_status_t test_db_insert(agc_stream_handle_t *stream);
 static agc_status_t test_db_query(agc_stream_handle_t *stream);
-static agc_status_t test_db_update(agc_stream_handle_t *stream);
+static agc_status_t test_db_update(agc_stream_handle_t *stream);
 static agc_status_t test_db_delete(agc_stream_handle_t *stream);
 
 int db_callback(void *pArg, int argc, char **argv, char **columnNames);
@@ -111,7 +111,7 @@ static agc_status_t test_db_insert(agc_stream_handle_t *stream)
 	if (agc_db_step(stmt) != AGC_DB_DONE) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "insert data failed .\n");
 		stream->write_function(stream, "test_db_insert [fail].\n");
-	} else {
+	} else {
 		status = AGC_STATUS_SUCCESS;
 		stream->write_function(stream, "test_db_insert [ok].\n");
 	}
@@ -215,7 +215,7 @@ static agc_status_t test_db_update(agc_stream_handle_t *stream)
 	if (agc_db_step(stmt) != AGC_DB_DONE) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "test_db_update failed .\n");
 		stream->write_function(stream, "test_db_update [fail].\n");
-	} else {
+	} else {
 		status = AGC_STATUS_SUCCESS;
 		stream->write_function(stream, "test_db_update [ok].\n");
 	}
@@ -255,7 +255,7 @@ static agc_status_t test_db_delete(agc_stream_handle_t *stream)
 	if (agc_db_step(stmt) != AGC_DB_DONE) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "test_db_update failed .\n");
 		stream->write_function(stream, "test_db_delete [fail].\n");
-	} else {
+	} else {
 		status = AGC_STATUS_SUCCESS;
 		stream->write_function(stream, "test_db_delete [ok].\n");
 	}

@@ -181,7 +181,8 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 			char command[1024];
 			enum ECommandFormat {
 				COMMAND_FORMAT_UNKNOWN,
-				COMMAND_FORMAT_PLAINTEXT
+				COMMAND_FORMAT_PLAINTEXT,
+				COMMAND_FORMAT_JSONTEXT
 			} cmdfmt = COMMAND_FORMAT_PLAINTEXT;
 
 			amqp_maybe_release_buffers(consumer->mq_conn->state);
@@ -220,6 +221,8 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 			if (envelope.message.properties._flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
 				if (strncasecmp("text/plain", envelope.message.properties.content_type.bytes, strlen("text/plain")) == 0) {
 					cmdfmt = COMMAND_FORMAT_PLAINTEXT;
+				} else if (strncasecmp(MQ_DEFAULT_CONTENT_TYPE, envelope.message.properties.content_type.bytes, strlen(MQ_DEFAULT_CONTENT_TYPE)) == 0) {
+					cmdfmt = COMMAND_FORMAT_JSONTEXT;
 				} else {
 					cmdfmt = COMMAND_FORMAT_UNKNOWN;
 				}
@@ -231,6 +234,14 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 				agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] execute command %s.\n", consumer->name, command);
 
 				agc_parse_execute(command);
+			}
+
+			if (cmdfmt = COMMAND_FORMAT_JSONTEXT) {
+				agc_event_t *event = NULL;
+				if (agc_event_create_json(&event, (const char *) envelope.message.body.bytes) == AGC_STATUS_SUCCESS) {
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Consumer[%s] fire event %d.\n", consumer->name, event->event_id);
+					agc_event_fire(&event);
+				}
 			}
 
 			amqp_destroy_envelope(&envelope);

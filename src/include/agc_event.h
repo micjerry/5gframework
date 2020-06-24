@@ -10,8 +10,14 @@ AGC_BEGIN_EXTERN_C
 
 #define EVENT_ID_ALL 0
 #define EVENT_ID_EVENTSOCKET 1
+#define EVENT_ID_CMDRESULT 2
 
 #define EVENT_ID_IS_INVALID(x) (x == EVENT_ID_ALL || x >= EVENT_ID_LIMIT)
+
+#define EVENT_HEADER_ROUTING "_routingkey"
+#define EVENT_HEADER_UUID "_uuid"
+#define EVENT_HEADER_CODE "_code"
+#define EVENT_HEADER_DESC "_desc"
 
 struct agc_event_header {
 	/*! the header name */
@@ -72,6 +78,8 @@ AGC_DECLARE(const char *) agc_event_get_name(int event_id);
 
 AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, uint32_t source_id);
 
+AGC_DECLARE(agc_status_t) agc_event_set_id(agc_event_t *event, int event_id);
+
 AGC_DECLARE(agc_status_t) agc_event_create_callback(agc_event_t **event, uint32_t source_id, void *data, agc_event_callback_func callback);
 
 AGC_DECLARE(void) agc_event_destroy(agc_event_t **event);
@@ -106,6 +114,8 @@ AGC_DECLARE(agc_status_t) agc_event_fire(agc_event_t **event);
 AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON **json);
 
 AGC_DECLARE(agc_status_t) agc_event_serialize_json(agc_event_t *event, char **str);
+
+AGC_DECLARE(agc_status_t) agc_event_create_json(agc_event_t **event, const char *json);
 
 AGC_END_EXTERN_C
 

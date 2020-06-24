@@ -38,117 +38,117 @@ static void * agc_loadable_module_exec(agc_thread_t *thread, void *obj);
 
 AGC_DECLARE(agc_status_t) agc_loadable_module_init()
 {
-    FILE *file;
-    yaml_parser_t parser;
-    yaml_token_t token;
-    int module_count = 0;
-    int done = 0;
-    int error = 0;
-    int iskey = 0;
-    int block = 0;
-    int BLOCK_MODULES = 1;
-    int new_module = 0;
-    char module_name[64] = {0};
-    char module_path[256] = {0};
-    char module_global[16] = {0};
-    char *datap = NULL;
-    const char *err;
+	FILE *file;
+	yaml_parser_t parser;
+	yaml_token_t token;
+	int module_count = 0;
+	int done = 0;
+	int error = 0;
+	int iskey = 0;
+	int block = 0;
+	int BLOCK_MODULES = 1;
+	int new_module = 0;
+	char module_name[64] = {0};
+	char module_path[256] = {0};
+	char module_global[16] = {0};
+	char *datap = NULL;
+	const char *err;
 
-    memset(&loadable_modules, 0, sizeof(loadable_modules));
-    agc_memory_create_pool(&loadable_modules.pool);
+	memset(&loadable_modules, 0, sizeof(loadable_modules));
+	agc_memory_create_pool(&loadable_modules.pool);
+
+	agc_mutex_init(&loadable_modules.mutex, AGC_MUTEX_NESTED, loadable_modules.pool);
+	loadable_modules.module_hash = agc_hash_make(loadable_modules.pool);
+
+	loadable_modules.cfgfile_path = agc_core_sprintf(loadable_modules.pool, "%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, CFG_MODULES_FILE);
+
+	file = fopen(loadable_modules.cfgfile_path, "rb");
+	assert(file);
+	assert(yaml_parser_initialize(&parser));
+
+	yaml_parser_set_input_file(&parser, file);
     
-    agc_mutex_init(&loadable_modules.mutex, AGC_MUTEX_NESTED, loadable_modules.pool);
-    loadable_modules.module_hash = agc_hash_make(loadable_modules.pool);
-    
-    loadable_modules.cfgfile_path = agc_core_sprintf(loadable_modules.pool, "%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, CFG_MODULES_FILE);
-    
-    file = fopen(loadable_modules.cfgfile_path, "rb");
-    assert(file);
-    assert(yaml_parser_initialize(&parser));
-    
-    yaml_parser_set_input_file(&parser, file);
-    
-    while (!done)
-    {
-        if (!yaml_parser_scan(&parser, &token)) {
-            error = 1;
-            break;
-        }
+	while (!done)
+	{
+		if (!yaml_parser_scan(&parser, &token)) {
+			error = 1;
+			break;
+		}
         
-        switch(token.type)
-        {
-            case YAML_KEY_TOKEN:
-                iskey = 1;
-                break;
-            case YAML_VALUE_TOKEN:
-                iskey = 0;
-                break;
-            case YAML_SCALAR_TOKEN:
-                {
-                    if (iskey)
-                    {
-                        if (strcmp(token.data.scalar.value, "modules") == 0)
-                        {
-                            block = BLOCK_MODULES;
-                            datap = NULL;
-                        } else if (strcmp(token.data.scalar.value, "name") == 0)
-                        {
-                            datap = module_name;
-                        } else if (strcmp(token.data.scalar.value, "path") == 0)
-                        {
-                            datap = module_path;
-                        } else if (strcmp(token.data.scalar.value, "global") == 0)
-                        {
-                            datap = module_global;
-                        } else {
-                            block = 0;
-                            datap = NULL;
-                        }
-                    } else {
-                        if (datap)
-                            strcpy(datap, token.data.scalar.value);
-                    }
-                }
-                break;
-            case YAML_BLOCK_ENTRY_TOKEN:
-                if (block == BLOCK_MODULES) {
-                    new_module = 1;
-                    memset(module_path, 0, sizeof(module_path));
-                    memset(module_name, 0, sizeof(module_name));
-                    memset(module_global, 0, sizeof(module_global));
-                }
-                break;
+		switch(token.type)
+		{
+			case YAML_KEY_TOKEN:
+				iskey = 1;
+				break;
+			case YAML_VALUE_TOKEN:
+				iskey = 0;
+				break;
+			case YAML_SCALAR_TOKEN:
+				{
+					if (iskey)
+					{
+						if (strcmp(token.data.scalar.value, "modules") == 0)
+						{
+							block = BLOCK_MODULES;
+							datap = NULL;
+						} else if (strcmp(token.data.scalar.value, "name") == 0)
+						{
+							datap = module_name;
+						} else if (strcmp(token.data.scalar.value, "path") == 0)
+						{
+							datap = module_path;
+						} else if (strcmp(token.data.scalar.value, "global") == 0)
+						{
+							datap = module_global;
+						} else {
+							block = 0;
+							datap = NULL;
+						}
+					} else {
+						if (datap)
+							strcpy(datap, token.data.scalar.value);
+					}
+				}
+                		break;
+		case YAML_BLOCK_ENTRY_TOKEN:
+			if (block == BLOCK_MODULES) {
+				new_module = 1;
+				memset(module_path, 0, sizeof(module_path));
+				memset(module_name, 0, sizeof(module_name));
+				memset(module_global, 0, sizeof(module_global));
+			}
+			break;
             case YAML_BLOCK_END_TOKEN:
-                if ((block == BLOCK_MODULES) && new_module) {
-                    agc_bool_t global = AGC_FALSE;
-                    global = agc_true(module_global);
-                    if (agc_loadable_module_loadfile(module_path, module_name, global, &err) != AGC_STATUS_SUCCESS) {
-                        agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Failed to load module %s, abort()\n", module_name);
-                        abort();
-                    }
-                    module_count++;
-                    new_module = 0;
-                }
-                break;
+			if ((block == BLOCK_MODULES) && new_module) {
+				agc_bool_t global = AGC_FALSE;
+				global = agc_true(module_global);
+				if (agc_loadable_module_loadfile(module_path, module_name, global, &err) != AGC_STATUS_SUCCESS) {
+					agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Failed to load module %s, abort()\n", module_name);
+					abort();
+				}
+				module_count++;
+				new_module = 0;
+			}
+			break;
             default:
-                break;
+			break;
         }
         
-        done = (token.type == YAML_STREAM_END_TOKEN);
-        yaml_token_delete(&token);
-    }
-    
-    yaml_parser_delete(&parser);
-    assert(!fclose(file));
-    
-    if (!module_count) {
-		agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "No modules loaded\n");
-        return AGC_STATUS_GENERR;
+		done = (token.type == YAML_STREAM_END_TOKEN);
+		yaml_token_delete(&token);
 	}
     
-    agc_loadable_module_runtime();
+	yaml_parser_delete(&parser);
+	assert(!fclose(file));
     
-    return AGC_STATUS_SUCCESS;
+	if (!module_count) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CONSOLE, "No modules loaded\n");
+		return AGC_STATUS_GENERR;
+	}
+
+	agc_loadable_module_runtime();
+
+	return AGC_STATUS_SUCCESS;
 }
 
 static agc_status_t agc_loadable_module_loadfile(char *dir, char *fname, agc_bool_t global, const char **err)

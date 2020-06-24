@@ -136,6 +136,10 @@ AS_IF([test "x$enable_core_libedit_support" != "xno"], [
   CPPFLAGS="${save_CPPFLAGS}"
 ])
 
+#  Enable 64 bit build
+AC_ARG_ENABLE(64,
+[AC_HELP_STRING([--enable-64],[build with 64 bit support])],[enable_64="$enable_64"],[enable_64="no"])
+
 #######################################
 ####           functions           ####
 #######################################
@@ -171,6 +175,76 @@ m4_defun([_LT_AC_LANG_GCJ_CONFIG], [:])
 m4_defun([_LT_AC_LANG_RC_CONFIG], [:])
 AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
+
+AX_COMPILER_VENDOR
+
+# Set CC_FOR_BUILD
+if test "x${cross_compiling}" = "xyes"; then
+    CC_FOR_BUILD=${CC_FOR_BUILD-gcc}
+    case "$host" in
+    	 arm*-linux-gnueabi*|arm*-*-linux-gnueabi*)
+		# spandsp modem
+		ac_cv_file__dev_ptmx=yes
+		# libjs
+		export ac_cv_va_copy=yes
+		# srtp
+		export ac_cv_file__dev_urandom=yes
+		# rpl_malloc
+		export ac_cv_func_realloc_0_nonnull=yes
+		export ac_cv_func_malloc_0_nonnull=yes
+		# apr
+		export ac_cv_func_setpgrp_void=yes
+		export ac_cv_file__dev_zero=yes
+		export apr_cv_tcp_nodelay_with_cork=yes
+		export ac_cv_file_dbd_apr_dbd_mysql_c=no
+		export ac_cv_sizeof_ssize_t=4
+		export apr_cv_mutex_recursive=yes
+		export ac_cv_func_pthread_rwlock_init=yes
+		export apr_cv_type_rwlock_t=yes
+		export apr_cv_process_shared_works=yes
+		export apr_cv_mutex_robust_shared=yes
+	 ;;
+    esac
+else
+    CC_FOR_BUILD='$(CC)'
+fi
+AC_SUBST(CC_FOR_BUILD)
+
+#set SOLINK variable based on compiler and host
+if test "x${ax_cv_c_compiler_vendor}"  =  "xsun" ; then
+    SOLINK="-Bdynamic -dy -G"
+elif test "x${ax_cv_c_compiler_vendor}" = "xclang" ; then
+    case "$host" in
+        *darwin*)
+            SOLINK="-dynamic -force-flat-namespace"
+        ;;
+        *)
+            SOLINK="-shared -Xlinker -x"
+        ;;
+
+    esac
+elif test "x${ax_cv_c_compiler_vendor}" = "xgnu" ; then
+    case "$host" in
+# older Xcode test for darwin, Xcode 4/5 use clang above
+        *darwin*)
+            SOLINK="-dynamic -bundle -force-flat-namespace"
+        ;;
+        *-solaris2*)
+            SOLINK="-shared -Xlinker"
+        ;;
+        *)
+            SOLINK="-shared -Xlinker -x"
+        ;;
+    esac
+elif test "x${ax_cv_c_compiler_vendor}" = "xintel" ; then
+    case "$host" in
+        *)
+            SOLINK="-shared -Xlinker -x"
+        ;;
+    esac
+else
+    AC_ERROR([Please update configure.in with SOLINK values for your compiler])
+fi
 
 LT_INIT([pic-only disable-static])
 
@@ -208,6 +282,7 @@ AC_CHECK_HEADERS( \
     arpa/inet.h \
     sys/socket.h \
     netinet/in.h \
+    netinet/sctp.h \
     netdb.h \
 )
 
@@ -272,6 +347,62 @@ fi
 
 saved_CFLAGS="$CFLAGS"
 
+
+# tweak compiler specific flags
+if test "x${ax_cv_c_compiler_vendor}"  =  "xsun" ; then
+    APR_ADDTO(AGC_AM_CFLAGS, -KPIC)
+    APR_ADDTO(AGC_AM_CFLAGS, -DPIC)
+    APR_ADDTO(AGC_AM_CFLAGS, -erroff=E_END_OF_LOOP_CODE_NOT_REACHED)
+    APR_ADDTO(AGC_AM_CFLAGS, -errtags=yes)
+    APR_ADDTO(AGC_AM_CFLAGS, -D__FUNCTION__=__func__ )
+    APR_ADDTO(AGC_AM_CFLAGS, -mt)
+    APR_ADDTO(AGC_AM_CXXFLAGS, -errtags=yes)
+    APR_ADDTO(AGC_AM_CXXFLAGS, -KPIC)
+    APR_ADDTO(AGC_AM_CXXFLAGS, -DPIC)
+    APR_ADDTO(AGC_AM_CXXFLAGS, "-features=extensions")
+    APR_ADDTO(AGC_AM_CXXFLAGS, -D__FUNCTION__=__func__)
+    APR_ADDTO(AGC_AM_CXXFLAGS, -mt)
+
+    APR_ADDTO(AGC_AM_LDFLAGS, -R${prefix}/lib)
+    if test "${enable_64}" = "yes"; then
+        APR_ADDTO(AGC_AM_CFLAGS, -m64)
+        APR_ADDTO(AGC_AM_CXXFLAGS, -m64)
+        APR_ADDTO(AGC_AM_LDFLAGS, -m64)
+	LIBS="$LIBS -m64"
+    fi
+elif test "x${ax_cv_c_compiler_vendor}" = "xclang" ; then
+    APR_ADDTO(AGC_AM_CFLAGS, -fPIC)
+    APR_ADDTO(AGC_AM_CXXFLAGS, -fPIC)
+    APR_ADDTO(AGC_AM_CFLAGS, -Werror)
+elif test "x${ax_cv_c_compiler_vendor}" = "xgnu" ; then
+    APR_ADDTO(AGC_AM_CFLAGS, -fPIC)
+    APR_ADDTO(AGC_AM_CXXFLAGS, -fPIC)
+    if test "$ac_cv_gcc_supports_w_no_unused_result" = yes; then
+      APR_ADDTO(AGC_AM_CFLAGS, -Werror)
+    fi
+    if test "${enable_64}" = "yes"; then
+	case "$host" in
+        *darwin*)
+            osxvrm=`sw_vers -productVersion`          # Get version.release.modlevel
+	        osxrel=`echo $osxvrm | cut -d. -f2`       # Get release only
+            if test "$osxrel" -ge 4; then             # 10.4 and up are x64
+		        APR_ADDTO(CFLAGS, -arch x86_64)
+		        APR_ADDTO(LDFLAGS, -arch x86_64)
+		        APR_ADDTO(CXXFLAGS, -arch x86_64)
+            fi
+		    ;;
+        *-solaris2*)
+		    APR_ADDTO(CFLAGS, -m64)
+		    APR_ADDTO(LDFLAGS, -m64)
+		    APR_ADDTO(CXXFLAGS, -m64)
+	        ;;
+	     *)
+	     	LIBS="$LIBS -m64"
+	     ;;
+	 esac
+    fi
+fi
+
 AC_CACHE_CHECK([whether compiler supports -Wdeclaration-after-statement], [ac_cv_gcc_declaration_after_statement], [
 CFLAGS="$CFLAGS -Wdeclaration-after-statement"
 AC_TRY_COMPILE([],[return 0;],[ac_cv_gcc_declaration_after_statement=yes],[ac_cv_gcc_declaration_after_statement=no])
@@ -282,6 +413,13 @@ if test x"$ac_cv_gcc_declaration_after_statement" = xyes; then
     APR_ADDTO(AGC_ANSI_CFLAGS, -Wdeclaration-after-statement)
 fi
 CFLAGS="$saved_CFLAGS"
+
+#Check for c++ 11
+AX_CXX_COMPILE_STDCXX([11], [noext], [mandatory])
+AS_IF([test "x$HAVE_CXX11" != "x1"],
+      [AC_MSG_ERROR([** A compiler with C++11 language features is required.])])
+	  
+APR_ADDTO(AGC_AM_CXXFLAGS, -std=c++0x)
 
 AC_SUBST(AGC_AM_CFLAGS)
 AC_SUBST(AGC_ANSI_CFLAGS)
@@ -427,6 +565,10 @@ echo "build location          : ${agc_builddir}"
 echo "modules                 : ${OUR_MODS}"
 echo "confmodules             : ${CONF_MODULES}"
 echo "agc compiler flags      : ${AGC_AM_CFLAGS}"
-echo "yml compile flags       : ${YAML_CFLAGS}"
+echo "c++ compiler flags      : ${AGC_AM_CXXFLAGS}"
 echo "agc linker flags:       : ${AGC_AM_LDFLAGS}"
+echo "agc cpp flags:          : ${CPPFLAGS}"
+echo "agc cxx flags:          : ${CXXFLAGS}"
+echo "agc amcpp flags:        : ${AGC_AM_CPPFLAGS}"
+echo "yml compile flags       : ${YAML_CFLAGS}"
 echo "yml linker flags:       : ${YAML_LIBS}"

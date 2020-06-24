@@ -8,7 +8,7 @@ static agc_event_node_t *mq_subscribe;
 
 static void handle_event(void *data);
 
-static void make_routingkey(char routingKey[MAX_MQ_ROUTING_KEY_LENGTH], agc_event_t *evt);
+static void make_routingkey(char *routingKey, int keylen, agc_event_t *evt);
 
 AGC_STANDARD_API(agcmq_load)
 {
@@ -75,6 +75,7 @@ static void handle_event(void *data)
 	agcmq_message_t *msg = NULL;
 	agcmq_conn_parameter_t *para;
 	agc_time_t now = agc_timer_curtime();
+	const char *routing_header = NULL;
 
 	if (!event)
 		return;
@@ -105,7 +106,12 @@ static void handle_event(void *data)
 			}
 
 			agc_event_serialize_json(event, &msg->pjson);
-			make_routingkey(msg->routing_key, event);
+			if ((routing_header = agc_event_get_header(event, EVENT_HEADER_ROUTING))) {
+				agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Producer[%s] custom routingkey[%s] found.\n", producer->name, routing_header);
+				strcpy(msg->routing_key, routing_header);
+			} else {
+				make_routingkey(msg->routing_key, MAX_MQ_ROUTING_KEY_LENGTH, event);
+			}
 			if (agc_queue_trypush(producer->send_queue, msg) != AGC_STATUS_SUCCESS) {
 				producer->reset_time = now + para->circuit_breaker_ms * 1000;
 				agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Message queue full.\n");
@@ -116,7 +122,7 @@ static void handle_event(void *data)
 
 }
 
-static void make_routingkey(char routingKey[MAX_MQ_ROUTING_KEY_LENGTH], agc_event_t *evt)
+static void make_routingkey(char *routingKey, int keylen, agc_event_t *evt)
 {
 	const char *hostname = NULL;
 	int len;
@@ -124,7 +130,7 @@ static void make_routingkey(char routingKey[MAX_MQ_ROUTING_KEY_LENGTH], agc_even
 	hostname = agc_core_get_hostname();
 	len = strlen(hostname);
 	
-	memset(routingKey, 0, sizeof(routingKey));
+	memset(routingKey, 0, keylen);
 	strcpy(routingKey, hostname);
 	routingKey[len] = '.';
 	len++;

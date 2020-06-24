@@ -43,6 +43,8 @@ static agc_event_header_t *agc_event_get_header_ptr(agc_event_t *event, const ch
 
 static agc_event_header_t *new_header(const char *header_name);
 
+static void init_ids();
+
 AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
 {
 	int i = 0;
@@ -64,8 +66,7 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
 	EVENT_DISPATCH_QUEUES = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(agc_queue_t *));
 	EVENT_DISPATCH_QUEUE_RUNNING = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(uint8_t));
 
-	memset(event_templates, 0, sizeof(event_templates));
-	event_templates[EVENT_ID_ALL] = "all";
+	init_ids();
     
 	// create dispatch queues
 	for (i = 0; i < MAX_DISPATCHER; i++)
@@ -102,6 +103,14 @@ AGC_DECLARE(agc_status_t) agc_event_shutdown(void)
     agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Event shutdown success.\n");
     
     return AGC_STATUS_SUCCESS;
+}
+
+static void init_ids()
+{
+	memset(event_templates, 0, sizeof(event_templates));
+	event_templates[EVENT_ID_ALL] = "all";
+	event_templates[EVENT_ID_EVENTSOCKET] ="esl";
+	event_templates[EVENT_ID_CMDRESULT] ="api_res";
 }
 
 AGC_DECLARE(uint32_t) agc_event_alloc_source(const char *source_name)
@@ -168,7 +177,7 @@ AGC_DECLARE(agc_status_t) agc_event_get_id(const char *event_name, int *event_id
 AGC_DECLARE(const char *) agc_event_get_name(int event_id)
 {
 	const char *event_name = NULL;
-	
+
 	if (EVENT_ID_IS_INVALID(event_id)) {
 		return NULL;
 	}
@@ -181,15 +190,23 @@ AGC_DECLARE(const char *) agc_event_get_name(int event_id)
 
 AGC_DECLARE(agc_status_t) agc_event_create(agc_event_t **event, int event_id, uint32_t source_id)
 {
-    agc_event_t * new_event;
-    new_event= malloc(sizeof(agc_event_t));
-    
-    memset(new_event, 0, sizeof(agc_event_t));
-    new_event->event_id = event_id;
-    new_event->source_id = source_id;
-    
-    *event = new_event;
-    return AGC_STATUS_SUCCESS;
+	agc_event_t * new_event;
+	new_event= malloc(sizeof(agc_event_t));
+
+	memset(new_event, 0, sizeof(agc_event_t));
+	new_event->event_id = event_id;
+	new_event->source_id = source_id;
+
+	*event = new_event;
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_set_id(agc_event_t *event, int event_id)
+{
+	if (event)
+		event->event_id = event_id;
+
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_create_callback(agc_event_t **event,  
@@ -197,53 +214,53 @@ AGC_DECLARE(agc_status_t) agc_event_create_callback(agc_event_t **event,
                                                     void *data, 
                                                     agc_event_callback_func callback)
 {
-    agc_event_t * new_event;
-    
-    if (agc_event_create(&new_event, 0, source_id) != AGC_STATUS_SUCCESS) {
-        return AGC_STATUS_GENERR;
-    }
-    new_event->call_back = callback;
-    new_event->context = data;
-    
-    *event = new_event;
-    return AGC_STATUS_SUCCESS;
+	agc_event_t * new_event;
+
+	if (agc_event_create(&new_event, 0, source_id) != AGC_STATUS_SUCCESS) {
+		return AGC_STATUS_GENERR;
+	}
+	new_event->call_back = callback;
+	new_event->context = data;
+
+	*event = new_event;
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(void) agc_event_destroy(agc_event_t **event)
 {
-    agc_event_t *ep = *event;
+	agc_event_t *ep = *event;
 	agc_event_header_t *hp, *this;
     
-    if (ep) {
-        for (hp = ep->headers; hp;) {
-            this = hp;
-            hp = hp->next;
-            agc_safe_free(this->name);
+	if (ep) {
+		for (hp = ep->headers; hp;) {
+			this = hp;
+			hp = hp->next;
+			agc_safe_free(this->name);
 			agc_safe_free(this->value);
-            agc_safe_free(this);
-        }
+			agc_safe_free(this);
+        	}
         
-        agc_safe_free(ep->body);
-    }
+		agc_safe_free(ep->body);
+	}
     
-    *event = NULL;
+	*event = NULL;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_add_header(agc_event_t *event, const char *header_name, const char *fmt, ...)
 {
-    int ret = 0;
+	int ret = 0;
 	char *data;
 	va_list ap;
     
-    va_start(ap, fmt);
-    ret = agc_vasprintf(&data, fmt, ap);
-    va_end(ap);
+	va_start(ap, fmt);
+	ret = agc_vasprintf(&data, fmt, ap);
+	va_end(ap);
     
-    if (ret == -1) {
+	if (ret == -1) {
 		return AGC_STATUS_MEMERR;
 	}
     
-    return agc_event_base_add_header(event, header_name, data);
+	return agc_event_base_add_header(event, header_name, data);
 }
 
 AGC_DECLARE(agc_status_t) agc_event_add_header_string(agc_event_t *event, const char *header_name, const char *data)
@@ -257,55 +274,55 @@ AGC_DECLARE(agc_status_t) agc_event_add_header_string(agc_event_t *event, const 
 
 AGC_DECLARE(agc_status_t) agc_event_del_header(agc_event_t *event, const char *header_name)
 {
-    agc_event_header_t *hp, *lp = NULL, *tp;
-    
-    tp = event->headers;
-    
-    while (tp) {
-        hp = tp;
+	agc_event_header_t *hp, *lp = NULL, *tp;
+
+	tp = event->headers;
+
+	while (tp) {
+		hp = tp;
 		tp = tp->next;
-        
-        if (!strcasecmp(header_name, hp->name)) {
-            if (lp) {
+	    
+		if (!strcasecmp(header_name, hp->name)) {
+			if (lp) {
 				lp->next = hp->next;
 			} else {
 				event->headers = hp->next;
 			}
-            
-            if (hp == event->last_header || !hp->next) {
+	        
+			if (hp == event->last_header || !hp->next) {
 				event->last_header = lp;
 			}
-            
-            agc_safe_free(hp->name);
-            agc_safe_free(hp->value);
-            agc_safe_free(hp);
-        } else {
-            lp = hp;
-        }
-    }
-    
-    return AGC_STATUS_SUCCESS;
+	        
+			agc_safe_free(hp->name);
+			agc_safe_free(hp->value);
+			agc_safe_free(hp);
+	    } else {
+			lp = hp;
+	    }
+	}
+
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(const char *) agc_event_get_header(agc_event_t *event, const char *header_name)
 {
-    agc_event_header_t *hp;
-    if ((hp = agc_event_get_header_ptr(event, header_name))) {
-        return hp->value;
-    }
-    
-    return NULL;
+	agc_event_header_t *hp;
+	if ((hp = agc_event_get_header_ptr(event, header_name))) {
+		return hp->value;
+	}
+
+	return NULL;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_add_body(agc_event_t *event, const char *fmt, ...)
 {
-    int ret = 0;
+	int ret = 0;
 	char *data;
 
-    assert(event);
+	assert(event);
 	va_list ap;
     
-    if (fmt) {
+	if (fmt) {
 		va_start(ap, fmt);
 		ret = agc_vasprintf(&data, fmt, ap);
 		va_end(ap);
@@ -324,13 +341,17 @@ AGC_DECLARE(agc_status_t) agc_event_add_body(agc_event_t *event, const char *fmt
 
 AGC_DECLARE(agc_status_t) agc_event_set_body(agc_event_t *event, const char *body)
 {
-    assert(event);
+	assert(event);
+
+	if (!body) {
+		return AGC_STATUS_GENERR;
+	}
+	
+	agc_safe_free(event->body);
+	if (body)
+		event->body = strdup(body);
     
-    agc_safe_free(event->body);
-    if (body)
-        event->body = strdup(body);
-    
-    return AGC_STATUS_SUCCESS;
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(const char *) agc_event_get_body(agc_event_t *event)
@@ -400,32 +421,32 @@ AGC_DECLARE(agc_status_t) agc_event_bind_removable(const char *id,
 
 AGC_DECLARE(agc_status_t) agc_event_fire(agc_event_t **event)
 {
-    agc_queue_t *event_queue = NULL;
-    int queue_index = 0;
-    agc_event_t *eventp = *event;
-    
-    if (!eventp) {
-        return AGC_STATUS_GENERR;
-    }
-    
-    if (SYSTEM_RUNNING == 0) {
+	agc_queue_t *event_queue = NULL;
+	int queue_index = 0;
+	agc_event_t *eventp = *event;
+
+	if (!eventp) {
+		return AGC_STATUS_GENERR;
+	}
+
+	if (SYSTEM_RUNNING == 0) {
 		agc_event_destroy(event);
 		return AGC_STATUS_SUCCESS;
 	}
-    
-    if (eventp->source_id != EVENT_NULL_SOURCEID) {
-        queue_index = eventp->source_id % MAX_DISPATCHER;
-    } else {
-        queue_index = agc_random(MAX_DISPATCHER);
-    }
-    
-    event_queue = EVENT_DISPATCH_QUEUES[queue_index];
-    if (!event_queue) {
-        return AGC_STATUS_GENERR;
-    }
-    
-    agc_queue_push(event_queue, eventp);
-    return AGC_STATUS_SUCCESS;
+
+	if (eventp->source_id != EVENT_NULL_SOURCEID) {
+		queue_index = eventp->source_id % MAX_DISPATCHER;
+	} else {
+		queue_index = agc_random(MAX_DISPATCHER);
+	}
+
+	event_queue = EVENT_DISPATCH_QUEUES[queue_index];
+	if (!event_queue) {
+		return AGC_STATUS_GENERR;
+	}
+
+	agc_queue_push(event_queue, eventp);
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_unbind(agc_event_node_t **node)
@@ -468,39 +489,38 @@ AGC_DECLARE(agc_status_t) agc_event_unbind(agc_event_node_t **node)
 
 AGC_DECLARE(agc_status_t) agc_event_unbind_callback(agc_event_callback_func callback)
 {
-    agc_event_node_t *event_node, *np, *lnp = NULL;
-    agc_status_t status = AGC_STATUS_FALSE;
-    int id = 0;
-    
-    agc_thread_rwlock_wrlock(EVENT_NODES_RWLOCK);
-    
-    for (id = 0; id < EVENT_ID_LIMIT; id++) {
-        lnp = NULL;
-        
-        for (np = EVENT_NODES[id]; np;) {
-            event_node = np;
-            np = np->next;
-            
-            if (event_node->callback == callback) {
-                if (lnp) {
-                    lnp->next = event_node->next;
-                } else {
-                    EVENT_NODES[id] = event_node->next;
-                }
-                
-                agc_safe_free(event_node->id);
-                agc_safe_free(event_node);
-                status = AGC_STATUS_SUCCESS;
-			    break;
-            } else {
-                lnp = event_node;
-            }
-        }
-    }
-    
-    agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
-    return status;
-    
+	agc_event_node_t *event_node, *np, *lnp = NULL;
+	agc_status_t status = AGC_STATUS_FALSE;
+	int id = 0;
+
+	agc_thread_rwlock_wrlock(EVENT_NODES_RWLOCK);
+
+	for (id = 0; id < EVENT_ID_LIMIT; id++) {
+		lnp = NULL;
+	    
+		for (np = EVENT_NODES[id]; np;) {
+			event_node = np;
+			np = np->next;
+	        
+			if (event_node->callback == callback) {
+				if (lnp) {
+					lnp->next = event_node->next;
+				} else {
+					EVENT_NODES[id] = event_node->next;
+				}
+	            
+				agc_safe_free(event_node->id);
+				agc_safe_free(event_node);
+				status = AGC_STATUS_SUCCESS;
+				break;
+			} else {
+				lnp = event_node;
+			}
+		}
+	}
+
+	agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
+	return status;
 }
 
 AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON **json)
@@ -538,6 +558,48 @@ AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON
 
 }
 
+AGC_DECLARE(agc_status_t) agc_event_create_json(agc_event_t **event, const char *json)
+{
+	agc_event_t *new_event = NULL;
+	cJSON *cj, *cjp;
+
+	if (!(cj = cJSON_Parse(json))) {
+		return AGC_STATUS_FALSE;
+	}
+
+	if (agc_event_create(&new_event, 0, EVENT_NULL_SOURCEID) != AGC_STATUS_SUCCESS) {
+		cJSON_Delete(cj);
+		return AGC_STATUS_FALSE;
+	}
+
+	for (cjp = cj->child; cjp; cjp = cjp->next)  {
+		int event_id = 0;
+		char *name = cjp->string;
+		char *value = cjp->valuestring;
+
+		if (name && value) {
+			if (!strcasecmp(name, "_body")) {
+				agc_event_set_body(new_event, value);
+			} else if (!strcasecmp(name, "_id")) {
+				event_id = atoi(value);
+				if (EVENT_ID_IS_INVALID(event_id)) {
+					cJSON_Delete(cj);
+					agc_event_destroy(&new_event);
+					return AGC_STATUS_FALSE;
+				}
+				agc_event_set_id(new_event, event_id);
+			} else {
+				agc_event_add_header_string(new_event, name, value);
+			}
+		}
+	}
+
+	cJSON_Delete(cj);
+	*event = new_event;
+	return AGC_STATUS_SUCCESS;
+	
+}
+
 AGC_DECLARE(agc_status_t) agc_event_serialize_json(agc_event_t *event, char **str)
 {
 	cJSON *cj;
@@ -555,45 +617,45 @@ AGC_DECLARE(agc_status_t) agc_event_serialize_json(agc_event_t *event, char **st
 
 static void agc_event_launch_dispatch_threads()
 {
-    agc_threadattr_t *thd_attr;
-    int index = 0;
-    uint32_t wait_times = 0;
+	agc_threadattr_t *thd_attr;
+	int index = 0;
+	uint32_t wait_times = 0;
+
+	EVENT_DISPATCH_THREADS = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(agc_thread_t *));
     
-    EVENT_DISPATCH_THREADS = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(agc_thread_t *));
-    
-    for (index = 0; index < MAX_DISPATCHER; index++)
-    {
-        wait_times = 200;
-        agc_threadattr_create(&thd_attr, RUNTIME_POOL);
-        agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
+	for (index = 0; index < MAX_DISPATCHER; index++)
+	{
+		wait_times = 200;
+		agc_threadattr_create(&thd_attr, RUNTIME_POOL);
+		agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
 		agc_threadattr_priority_set(thd_attr, AGC_PRI_REALTIME);
-        agc_thread_create(&EVENT_DISPATCH_THREADS[index], thd_attr, agc_event_dispatch_thread, EVENT_DISPATCH_QUEUES[index], RUNTIME_POOL);
-        
-        while(--wait_times && !EVENT_DISPATCH_QUEUE_RUNNING[index]) {
-            agc_yield(10000);
-        }
-        
-        agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Create event dispatch thread %d.\n", index);
-    }
+		agc_thread_create(&EVENT_DISPATCH_THREADS[index], thd_attr, agc_event_dispatch_thread, EVENT_DISPATCH_QUEUES[index], RUNTIME_POOL);
+	    
+		while(--wait_times && !EVENT_DISPATCH_QUEUE_RUNNING[index]) {
+			agc_yield(10000);
+		}
+	    
+		agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Create event dispatch thread %d.\n", index);
+	}
 }
 
 static void *agc_event_dispatch_thread(agc_thread_t *thread, void *obj)
 {
-    agc_queue_t *queue = (agc_queue_t *) obj;
-    int my_id = 0;
-    
-    for (my_id = 0; my_id < MAX_DISPATCHER; my_id++) {
+	agc_queue_t *queue = (agc_queue_t *) obj;
+	int my_id = 0;
+
+	for (my_id = 0; my_id < MAX_DISPATCHER; my_id++) {
 		if (EVENT_DISPATCH_THREADS[my_id] == thread) {
 			break;
 		}
 	}
-    
-    agc_mutex_lock(EVENTSTATE_MUTEX);
-    EVENT_DISPATCH_QUEUE_RUNNING[my_id] = 1;
-    DISPATCH_THREAD_COUNT++;
-    agc_mutex_unlock(EVENTSTATE_MUTEX);
-    
-    for (;;) {
+
+	agc_mutex_lock(EVENTSTATE_MUTEX);
+	EVENT_DISPATCH_QUEUE_RUNNING[my_id] = 1;
+	DISPATCH_THREAD_COUNT++;
+	agc_mutex_unlock(EVENTSTATE_MUTEX);
+
+	for (;;) {
 		void *pop = NULL;
 		agc_event_t *event = NULL;
 
@@ -614,96 +676,98 @@ static void *agc_event_dispatch_thread(agc_thread_t *thread, void *obj)
 		agc_os_yield();
 	}
 
-    agc_mutex_lock(EVENTSTATE_MUTEX);
-    EVENT_DISPATCH_QUEUE_RUNNING[my_id] = 0;
-    DISPATCH_THREAD_COUNT--;
-    agc_mutex_unlock(EVENTSTATE_MUTEX);
-    
-    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Dispatch thread %d ended.\n", my_id);
+	agc_mutex_lock(EVENTSTATE_MUTEX);
+	EVENT_DISPATCH_QUEUE_RUNNING[my_id] = 0;
+	DISPATCH_THREAD_COUNT--;
+	agc_mutex_unlock(EVENTSTATE_MUTEX);
+
+	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Dispatch thread %d ended.\n", my_id);
 }
 
 static void agc_event_deliver(agc_event_t **event)
 {
-    int event_id = 0;
-    agc_event_node_t *node;
-    agc_event_t *pevent = *event;
+	int event_id = 0;
+	agc_event_node_t *node;
+	agc_event_t *pevent = *event;
     
-    assert(pevent);
+	assert(pevent);
     
-    if (SYSTEM_RUNNING) {
-        if (pevent->call_back) {
-            pevent->call_back(pevent->context);
-        } else {
-            agc_thread_rwlock_rdlock(EVENT_NODES_RWLOCK);
-            event_id = pevent->event_id;
-            for (node = EVENT_NODES[event_id]; node; node = node->next) {
-                node->callback(pevent);
-            }
+	if (SYSTEM_RUNNING) {
+		if (pevent->call_back) {
+			//agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Dispatch callback.\n");
+			pevent->call_back(pevent->context);
+		} else {
+			agc_thread_rwlock_rdlock(EVENT_NODES_RWLOCK);
+			event_id = pevent->event_id;
+			for (node = EVENT_NODES[event_id]; node; node = node->next) {
+				node->callback(pevent);
+			}
             
-            for (node = EVENT_NODES[EVENT_ID_ALL]; node; node = node->next) {
-                node->callback(pevent);
-            }
+			for (node = EVENT_NODES[EVENT_ID_ALL]; node; node = node->next) {
+				node->callback(pevent);
+			}
         
-            agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
-        }
-    }
+			agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
+		}
+	}
     
-    agc_event_destroy(event);
+	agc_event_destroy(event);
 }
 
 static agc_status_t agc_event_base_add_header(agc_event_t *event, const char *header_name, char *data)
 {
-    agc_event_header_t *header = NULL;
+	agc_event_header_t *header = NULL;
     
-    header = agc_event_get_header_ptr(event, header_name);
+	header = agc_event_get_header_ptr(event, header_name);
     
-    if (!header) {
-        header = new_header(header_name);
-    } else {
-        agc_safe_free(header->value);
-    }
+	if (!header) {
+		header = new_header(header_name);
+	} else {
+		agc_safe_free(header->value);
+	}
     
-    assert(header);
+	assert(header);
     
-    header->value = data;
+	header->value = data;
     
-    if (event->last_header) {
-        event->last_header->next = header;
-    } else {
-        event->headers = header;
-        header->next = NULL;
-    }
+	if (event->last_header) {
+		event->last_header->next = header;
+	} else {
+		event->headers = header;
+		header->next = NULL;
+	}
     
-    event->last_header = header;
+	event->last_header = header;
     
-    return AGC_STATUS_SUCCESS;
+	return AGC_STATUS_SUCCESS;
 }
 
 static agc_event_header_t *agc_event_get_header_ptr(agc_event_t *event, const char *header_name)
 {
-    agc_event_header_t *hp;
+	agc_event_header_t *hp;
     
-    assert(event);
+	assert(event);
     
-    if (!header_name)
+	if (!header_name)
 		return NULL;
     
-    for (hp = event->headers; hp; hp = hp->next) {
+	for (hp = event->headers; hp; hp = hp->next) {
 		if (!strcasecmp(hp->name, header_name)) {
 			return hp;
 		}
 	}
+	
 	return NULL;
 }
 
 static agc_event_header_t *new_header(const char *header_name)
 {
-    agc_event_header_t *header;
-    
-    header = malloc(sizeof(*header));
-    memset(header, 0, sizeof(*header));
-    header->name = strdup(header_name);
-    return header;
+	agc_event_header_t *header;
+
+	header = malloc(sizeof(*header));
+	memset(header, 0, sizeof(*header));
+	header->name = strdup(header_name);
+	return header;
 }
 
 

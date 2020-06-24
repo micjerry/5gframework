@@ -25,6 +25,7 @@ struct agc_stream_handle_s {
 	agc_size_t data_len;
 	agc_size_t alloc_len;
 	agc_size_t alloc_chunk;
+	char *uuid;
 };
 
 struct agc_api_interface_s {
