@@ -999,6 +999,7 @@ APR_DECLARE(void) apr_pool_destroy(apr_pool_t *pool)
     /* Run cleanups */
     run_cleanups(&pool->cleanups);
     pool_concurrency_set_destroyed(pool);
+    pool->cleanups = NULL;
 
     /* Free subprocesses */
     free_proc_chain(pool->subprocesses);

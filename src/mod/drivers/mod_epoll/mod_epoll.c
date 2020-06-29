@@ -281,7 +281,7 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
 		ret = epoll_wait(epollfd, events, MAX_EPOLLEVENTS, -1);
 		//agc_mutex_unlock(EPOLL_THREADS_MUTEXS[my_id]);
 
-		if (ret == -1) {
+		if (ret == -1 && errno!=EINTR) {			
 			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "epoll_wait return error.\n");
 			break;
 		}

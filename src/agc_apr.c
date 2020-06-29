@@ -1,5 +1,7 @@
 #include <agc.h>
 
+#include <sched.h>
+
 #include "private/agc_core_pvt.h"
 
 #include <apr.h>
@@ -566,7 +568,6 @@ AGC_DECLARE(const char *) agc_dir_next_file(agc_dir_t *thedir, char *buf, agc_si
 struct apr_threadattr_t {
     apr_pool_t *pool;
     pthread_attr_t attr;
-    int priority;
 };
 
 
@@ -574,13 +575,11 @@ struct apr_threadattr_t {
 AGC_DECLARE(agc_status_t) agc_threadattr_create(agc_threadattr_t ** new_attr, agc_memory_pool_t *pool)
 {
 	agc_status_t status;
-
+	
 	if ((status = apr_threadattr_create(new_attr, pool)) == AGC_STATUS_SUCCESS) {
-
-		(*new_attr)->priority = AGC_PRI_LOW;
+		//(*new_attr)->priority = AGC_PRI_LOW;
 
 	}
-
 	return status;
 }
 
@@ -596,8 +595,29 @@ AGC_DECLARE(agc_status_t) agc_threadattr_stacksize_set(agc_threadattr_t *attr, a
 
 AGC_DECLARE(agc_status_t) agc_threadattr_priority_set(agc_threadattr_t *attr, agc_thread_priority_t priority)
 {
+	struct sched_param param;
 
-	attr->priority = priority;
+	if (!attr) {
+		return AGC_STATUS_FALSE;
+	}
+
+	if (pthread_attr_setschedpolicy(&attr->attr, SCHED_RR) != 0) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "pthread_attr_setschedpolicy failed.\n");
+		return AGC_STATUS_FALSE;
+	}
+		
+	if (pthread_attr_getschedparam (&attr->attr, &param) != 0) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "pthread_attr_getschedparam failed.\n");
+		return AGC_STATUS_FALSE;
+	}
+	
+	param.sched_priority = priority;
+	if (pthread_attr_setschedparam (&attr->attr, &param) != 0) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "pthread_attr_setschedparam failed.\n");
+		return AGC_STATUS_FALSE;
+	}
+
+	//attr->priority = priority;
 
 	return AGC_STATUS_SUCCESS;
 }

@@ -9,8 +9,19 @@ AGC_BEGIN_EXTERN_C
 #define EVENT_ID_LIMIT 1024
 
 #define EVENT_ID_ALL 0
+#define EVENT_NAME_ALL "all"
+
 #define EVENT_ID_EVENTSOCKET 1
+#define EVENT_NAME_EVENTSOCKET "esl"
+
 #define EVENT_ID_CMDRESULT 2
+#define EVENT_NAME_CMDRESULT "api_res"
+
+#define EVENT_ID_SIGATEWAY 3
+#define EVENT_NAME_SIGATEWAY "sig_cmd"
+
+#define EVENT_ID_MEDIAGATEWAY 4
+#define EVENT_NAME_MEDIAGATEWAY "media_cmd"
 
 #define EVENT_ID_IS_INVALID(x) (x == EVENT_ID_ALL || x >= EVENT_ID_LIMIT)
 
@@ -18,6 +29,7 @@ AGC_BEGIN_EXTERN_C
 #define EVENT_HEADER_UUID "_uuid"
 #define EVENT_HEADER_CODE "_code"
 #define EVENT_HEADER_DESC "_desc"
+#define EVENT_HEADER_SUBNAME "_subname" 
 
 struct agc_event_header {
 	/*! the header name */

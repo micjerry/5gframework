@@ -75,6 +75,7 @@ agc_status_t agcmq_load_config()
 		}
 	}
 
+	agc_dir_close(dir);
 	agc_memory_destroy_pool(&loop_pool);
 
 	agc_safe_free(dir_path);

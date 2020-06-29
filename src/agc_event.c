@@ -108,9 +108,11 @@ AGC_DECLARE(agc_status_t) agc_event_shutdown(void)
 static void init_ids()
 {
 	memset(event_templates, 0, sizeof(event_templates));
-	event_templates[EVENT_ID_ALL] = "all";
-	event_templates[EVENT_ID_EVENTSOCKET] ="esl";
-	event_templates[EVENT_ID_CMDRESULT] ="api_res";
+	event_templates[EVENT_ID_ALL] = EVENT_NAME_ALL;
+	event_templates[EVENT_ID_EVENTSOCKET] = EVENT_NAME_EVENTSOCKET;
+	event_templates[EVENT_ID_CMDRESULT] = EVENT_NAME_CMDRESULT;
+	event_templates[EVENT_ID_SIGATEWAY] = EVENT_NAME_SIGATEWAY;
+	event_templates[EVENT_ID_MEDIAGATEWAY] = EVENT_NAME_MEDIAGATEWAY;
 }
 
 AGC_DECLARE(uint32_t) agc_event_alloc_source(const char *source_name)

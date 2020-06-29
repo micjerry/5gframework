@@ -288,11 +288,14 @@ static void release_connection(event_connect_t **conn)
 	if (!conn || !l_conn)
 		return;
 
+	agc_thread_rwlock_destroy(l_conn->rwlock);
+	agc_queue_term(l_conn->event_queue);
+
 	if (l_conn->pool)
 		agc_memory_destroy_pool(&l_conn->pool);
 
 	if (l_conn->thread_pool)
-		agc_memory_destroy_pool(&l_conn->thread_pool);
+		agc_memory_destroy_pool(&l_conn->thread_pool); 
 	
 	*conn = NULL;
 }
@@ -388,7 +391,7 @@ static void *connection_run(agc_thread_t *thread, void *obj)
     
 	agc_mutex_lock(profile.mutex);
 	profile.threads--;
-	agc_mutex_unlock(profile.mutex);
+	agc_mutex_unlock(profile.mutex);	
     
 	return NULL;
 }
