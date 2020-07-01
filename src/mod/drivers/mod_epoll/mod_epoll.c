@@ -163,7 +163,7 @@ static agc_status_t agc_epoll_add_event(agc_connection_t *c, uint32_t event)
 		index = agc_random(EPOLL_MAX_DISPATCHER);
 	}
 
-	ee.events = events;
+	ee.events = events | EPOLLET;
 	ee.data.ptr = (void *) (c);
 
 
@@ -201,7 +201,7 @@ static agc_status_t agc_epoll_del_event(agc_connection_t *c, uint32_t event)
     
 	if (c->routine->active) {
 		op = EPOLL_CTL_MOD;
-		ee.events = prev;
+		ee.events = prev | EPOLLET;
 		ee.data.ptr = (void *) (c);
 	} else {
 		return AGC_STATUS_SUCCESS;

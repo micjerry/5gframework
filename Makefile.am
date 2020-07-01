@@ -204,6 +204,15 @@ samples-conf: config-default
 
 samples: samples-conf
 
+
+db-conf:
+	test -d $(DESTDIR)$(dbdir) || $(mkinstalldirs) $(DESTDIR)$(dbdir)
+	for dbfile in `cd $(agc_srcdir)/db/$* && find . -name \*.db` ; do \
+	    filename=`echo $$dbfile | sed -e 's|^\.||' | sed -e 's|^.*/||'`; \
+		test -f $(DESTDIR)$(dbdir)/$$filename || \
+		$(INSTALL) -m 644 $(agc_srcdir)/db/$$filename $(DESTDIR)$(dbdir); \
+	done
+
 install-exec-local:
 	$(mkinstalldirs) $(DESTDIR)$(modulesdir)
 
@@ -211,8 +220,9 @@ install-data-local:
 	@echo Installing $(NAME)
 	@for x in $(modulesdir) $(runtimedir) $(logfiledir); do \
 		$(mkinstalldirs) $(DESTDIR)$$x ; \
-	 done
+	done
 	test -d $(DESTDIR)$(confdir) || $(MAKE) samples-conf
+	test -d $(DESTDIR)$(dbdir) || $(MAKE) db-conf
 
 ##
 ## Helper targets
