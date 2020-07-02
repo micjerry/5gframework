@@ -125,6 +125,7 @@ static void handle_event(void *data)
 static void make_routingkey(char *routingKey, int keylen, agc_event_t *evt)
 {
 	const char *hostname = NULL;
+	const char *eventname = NULL;
 	int len;
 
 	hostname = agc_core_get_hostname();
@@ -134,6 +135,12 @@ static void make_routingkey(char *routingKey, int keylen, agc_event_t *evt)
 	strcpy(routingKey, hostname);
 	routingKey[len] = '.';
 	len++;
-	strcpy(routingKey + len, agc_event_get_name(evt->event_id));
+
+	eventname = agc_event_get_name(evt->event_id);
+	if (eventname) {
+		strcpy(routingKey + len, agc_event_get_name(evt->event_id));
+	} else {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Unkown event  %d.\n", evt->event_id);
+	}
 }
 

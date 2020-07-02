@@ -236,7 +236,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 				agc_parse_execute(command);
 			}
 
-			if (cmdfmt = COMMAND_FORMAT_JSONTEXT) {
+			if (cmdfmt == COMMAND_FORMAT_JSONTEXT) {
 				agc_event_t *event = NULL;
 				if (agc_event_create_json(&event, (const char *) envelope.message.body.bytes) == AGC_STATUS_SUCCESS) {
 					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Consumer[%s] fire event %d.\n", consumer->name, event->event_id);

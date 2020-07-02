@@ -597,6 +597,13 @@ AGC_DECLARE(agc_status_t) agc_event_create_json(agc_event_t **event, const char 
 	}
 
 	cJSON_Delete(cj);
+	
+	if (EVENT_ID_IS_INVALID(new_event->event_id)) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Invalid event received.\n");
+		agc_event_destroy(&new_event);
+		return AGC_STATUS_FALSE;
+	}
+	
 	*event = new_event;
 	return AGC_STATUS_SUCCESS;
 	
