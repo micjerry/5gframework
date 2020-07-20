@@ -109,6 +109,7 @@ static void *agc_timer_dispatch_timer(agc_thread_t *thread, void *obj)
 
 	sentinel = timertree->sentinel;
 	for ( ;; ) {
+
 		current_time = agc_time_now();
 		current_ms = (current_time / 1000);
 		if (!SYSTEM_RUNNING)
@@ -116,7 +117,7 @@ static void *agc_timer_dispatch_timer(agc_thread_t *thread, void *obj)
 
 		root = timertree->root;
 		if (root == sentinel) {
-			agc_os_yield();
+			agc_yield(10000);
 			continue;
 		}
 
@@ -125,7 +126,7 @@ static void *agc_timer_dispatch_timer(agc_thread_t *thread, void *obj)
 		agc_mutex_unlock(TIMER_RBTREE_MUTEX);
 
 		if ((agc_msec_int_t) (node->key - current_ms) > 0) {
-			agc_os_yield();
+			agc_yield(10000);
 			continue;
 		}
 

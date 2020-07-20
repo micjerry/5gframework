@@ -113,6 +113,7 @@ static void init_ids()
 	event_templates[EVENT_ID_CMDRESULT] = EVENT_NAME_CMDRESULT;
 	event_templates[EVENT_ID_SIGATEWAY] = EVENT_NAME_SIGATEWAY;
 	event_templates[EVENT_ID_MEDIAGATEWAY] = EVENT_NAME_MEDIAGATEWAY;
+	event_templates[EVENT_ID_JSONCMD] = EVENT_NAME_JSONCMD;
 }
 
 AGC_DECLARE(uint32_t) agc_event_alloc_source(const char *source_name)
@@ -672,7 +673,8 @@ static void *agc_event_dispatch_thread(agc_thread_t *thread, void *obj)
 			break;
 		}
 
-		if (agc_queue_pop(queue, &pop) != AGC_STATUS_SUCCESS) {
+		if (agc_queue_trypop(queue, &pop) != AGC_STATUS_SUCCESS) {
+			agc_yield(10000);
 			continue;
 		}
 
@@ -682,7 +684,6 @@ static void *agc_event_dispatch_thread(agc_thread_t *thread, void *obj)
 
 		event = (agc_event_t *) pop;
 		agc_event_deliver(&event);
-		agc_os_yield();
 	}
 
 	agc_mutex_lock(EVENTSTATE_MUTEX);

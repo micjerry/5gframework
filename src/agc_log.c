@@ -50,40 +50,40 @@ static agc_log_node_t *agc_log_node_alloc()
 
 static void *log_thread_func(agc_thread_t *t, void *obj)
 {
-    if (!obj) {
+	if (!obj) {
 		obj = NULL;
 	}
     
-    LOG_THREAD_RUNNING = 1;
+	LOG_THREAD_RUNNING = 1;
     
-    while (LOG_THREAD_RUNNING == 1) {
-        void *pop = NULL;
-        agc_log_node_t *node = NULL;
-        agc_log_binding_t *binding;
+	while (LOG_THREAD_RUNNING == 1) {
+		void *pop = NULL;
+		agc_log_node_t *node = NULL;
+		agc_log_binding_t *binding;
         
-        if (agc_queue_pop(LOG_MESSAGE_QUEUE, &pop) != AGC_STATUS_SUCCESS) {
+		if (agc_queue_pop(LOG_MESSAGE_QUEUE, &pop) != AGC_STATUS_SUCCESS) {
 			break;
 		}
         
-        if (!pop) {
+		if (!pop) {
 			LOG_THREAD_RUNNING = -1;
 			break;
 		}
         
-        node = (agc_log_node_t *) pop;
-        agc_mutex_lock(LOGGER_BIND_LOCK);
-        for (binding = LOGGER_BINDINGS; binding; binding = binding->next) {
+		node = (agc_log_node_t *) pop;
+		agc_mutex_lock(LOGGER_BIND_LOCK);
+		for (binding = LOGGER_BINDINGS; binding; binding = binding->next) {
 			if (binding->level >= node->level) {
 				binding->function(node, node->level);
 			}
 		}
-        agc_mutex_unlock(LOGGER_BIND_LOCK);
+		agc_mutex_unlock(LOGGER_BIND_LOCK);
         
-        agc_log_node_free(&node);
-    }
+		agc_log_node_free(&node);
+	}
     
-    LOG_THREAD_RUNNING = 0;
-    return NULL;
+	LOG_THREAD_RUNNING = 0;
+	return NULL;
 }
 
 AGC_DECLARE(agc_status_t) agc_log_init(agc_memory_pool_t *pool, agc_bool_t colorize)

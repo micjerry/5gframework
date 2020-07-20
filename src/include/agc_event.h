@@ -23,6 +23,9 @@ AGC_BEGIN_EXTERN_C
 #define EVENT_ID_MEDIAGATEWAY 4
 #define EVENT_NAME_MEDIAGATEWAY "media_cmd"
 
+#define EVENT_ID_JSONCMD 5
+#define EVENT_NAME_JSONCMD "om_cmd"
+
 #define EVENT_ID_IS_INVALID(x) (x == EVENT_ID_ALL || x >= EVENT_ID_LIMIT)
 
 #define EVENT_HEADER_ROUTING "_routingkey"

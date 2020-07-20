@@ -139,41 +139,41 @@ agc_status_t read_packet(event_connect_t *conn, agc_event_t **event)
 			}
 		}
         
-        if (!*mbuf) {
-            if (conn->has_event) {
-                while (agc_queue_trypop(conn->event_queue, &pop) == AGC_STATUS_SUCCESS) {
-                    char hbuf[512];
-		            agc_event_t *pevent = (agc_event_t *) pop;
+		if (!*mbuf) {
+			if (conn->has_event) {
+				while (agc_queue_trypop(conn->event_queue, &pop) == AGC_STATUS_SUCCESS) {
+					char hbuf[512];
+					agc_event_t *pevent = (agc_event_t *) pop;
             
-                    do_sleep = 0;
+					do_sleep = 0;
             
-                    agc_event_serialize_json(pevent, &conn->ebuf);
+					agc_event_serialize_json(pevent, &conn->ebuf);
             
-                    assert(conn->ebuf);
-                    len = strlen(conn->ebuf);
-                    
-                    agc_snprintf(hbuf, sizeof(hbuf), "Content-Length: %d\n" "Content-Type: text/event-json\n" "\n", len);
-                    hlen = strlen(hbuf);
-                    
-                    agc_socket_send(conn->sock, hbuf, &hlen);
-                    agc_socket_send(conn->sock, conn->ebuf, &len);
-                    
-                    agc_safe_free(conn->ebuf);
-                    agc_event_destroy(&pevent);
-                }
-            }
-        }
+					assert(conn->ebuf);
+					len = strlen(conn->ebuf);
+
+					agc_snprintf(hbuf, sizeof(hbuf), "Content-Length: %d\n" "Content-Type: text/event-json\n" "\n", len);
+					hlen = strlen(hbuf);
+
+					agc_socket_send(conn->sock, hbuf, &hlen);
+					agc_socket_send(conn->sock, conn->ebuf, &len);
+
+					agc_safe_free(conn->ebuf);
+					agc_event_destroy(&pevent);
+				}
+			}
+		}
         
-        if (do_sleep) {
+		if (do_sleep) {
 			int fdr = 0;
 			agc_poll(conn->pollfd, 1, &fdr, 20000);
-		} else {
+        	} else {
 			agc_os_yield();
 		}
-    }
+	}
     
-    agc_safe_free(mbuf);
-    return status;
+	agc_safe_free(mbuf);
+	return status;
 }
 
 agc_status_t parse_command(event_connect_t *conn, agc_event_t **event, char *reply, uint32_t reply_len)
