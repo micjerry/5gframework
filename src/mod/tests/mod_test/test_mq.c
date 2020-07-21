@@ -47,7 +47,7 @@ void test_customrouting(agc_stream_handle_t *stream)
 {
 	agc_event_t *new_event = NULL;
 	
-	if (agc_event_create(&new_event, EVENT_ID_CMDRESULT, EVENT_NULL_SOURCEID) != AGC_STATUS_SUCCESS) {
+	if (agc_event_create(&new_event, EVENT_ID_SIGATEWAY, EVENT_NULL_SOURCEID) != AGC_STATUS_SUCCESS) {
 		stream->write_function(stream, "test test_producer event create [fail].\n");
 		return;
 	} 
@@ -71,4 +71,6 @@ void test_customrouting(agc_stream_handle_t *stream)
 	stream->write_function(stream, "test test_producer [ok].\n");
 	return;
 }
+
+
 

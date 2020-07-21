@@ -137,6 +137,7 @@ agc_status_t agc_sctp_server(agc_sctp_sock_t *sock, agc_std_sockaddr_t *local_ad
 
 agc_status_t agc_sctp_client(agc_sctp_sock_t *sock, agc_std_sockaddr_t *local_addr, socklen_t addrlen, agc_sctp_config_t *cfg)
 {
+    int one = 1;
 	agc_sctp_sock_t fd = socket(local_addr->ss_family, SOCK_STREAM, IPPROTO_SCTP);
 	if (fd <= 0)
 	{
@@ -144,10 +145,29 @@ agc_status_t agc_sctp_client(agc_sctp_sock_t *sock, agc_std_sockaddr_t *local_ad
 		return AGC_STATUS_FALSE;
 	}
 
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&one, sizeof(int));
+    
     agc_sctp_subscribe_to_events(fd);
     agc_sctp_set_paddrparams(fd, cfg);
 	agc_sctp_set_rtoinfo(fd, cfg);
     agc_sctp_set_init_msg(fd, cfg);
+
+    if (local_addr->ss_family == AF_INET)
+    {
+        struct sockaddr_in cliaddr;
+        cliaddr.sin_family = AF_INET;
+        cliaddr.sin_addr.s_addr= htonl(INADDR_ANY);
+        cliaddr.sin_port = ((struct sockaddr_in *)local_addr)->sin_port;
+        bind(fd, (struct sockaddr *)&cliaddr,sizeof(cliaddr));
+    }
+    else
+    {
+        struct sockaddr_in6 cliaddr;
+        cliaddr.sin6_family = AF_INET6;
+        cliaddr.sin6_addr = in6addr_any;
+        cliaddr.sin6_port = ((struct sockaddr_in6 *)local_addr)->sin6_port;
+        bind(fd, (struct sockaddr *)&cliaddr,sizeof(cliaddr));
+    }
 
     *sock = fd;
 

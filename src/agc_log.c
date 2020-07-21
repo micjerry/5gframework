@@ -88,41 +88,41 @@ static void *log_thread_func(agc_thread_t *t, void *obj)
 
 AGC_DECLARE(agc_status_t) agc_log_init(agc_memory_pool_t *pool, agc_bool_t colorize)
 {
-    agc_threadattr_t *thd_attr;
-    agc_assert(pool != NULL);
+	agc_threadattr_t *thd_attr;
+	agc_assert(pool != NULL);
     
-    LOG_MEMORY_POOL = pool;
+	LOG_MEMORY_POOL = pool;
     
-    agc_threadattr_create(&thd_attr, LOG_MEMORY_POOL);
-    agc_queue_create(&LOG_MESSAGE_QUEUE, AGC_LOG_QUEUE_LEN, LOG_MEMORY_POOL);
-    agc_mutex_init(&LOGGER_BIND_LOCK, AGC_MUTEX_NESTED, LOG_MEMORY_POOL);
-    agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
-    agc_thread_create(&log_thread, thd_attr, log_thread_func, NULL, LOG_MEMORY_POOL);
-    while (!LOG_THREAD_RUNNING) {
+	agc_threadattr_create(&thd_attr, LOG_MEMORY_POOL);
+	agc_queue_create(&LOG_MESSAGE_QUEUE, AGC_LOG_QUEUE_LEN, LOG_MEMORY_POOL);
+	agc_mutex_init(&LOGGER_BIND_LOCK, AGC_MUTEX_NESTED, LOG_MEMORY_POOL);
+	agc_threadattr_stacksize_set(thd_attr, AGC_THREAD_STACKSIZE);
+	agc_thread_create(&log_thread, thd_attr, log_thread_func, NULL, LOG_MEMORY_POOL);
+	while (!LOG_THREAD_RUNNING) {
 		agc_cond_next();
 	}
     
-    if (colorize) {
-        COLORIZE = AGC_TRUE;
-    }
+	if (colorize) {
+	COLORIZE = AGC_TRUE;
+	}
     
-    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Log init success.\n");
-    return AGC_STATUS_SUCCESS;
+	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Log init success.\n");
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_log_shutdown(void)
 {
-    agc_status_t st;
-    
-    agc_queue_push(LOG_MESSAGE_QUEUE, NULL);
-    while (LOG_THREAD_RUNNING) {
+	agc_status_t st;
+
+	agc_queue_push(LOG_MESSAGE_QUEUE, NULL);
+	while (LOG_THREAD_RUNNING) {
 		agc_cond_next();
 	}
-    
-    agc_thread_join(&st, log_thread);
-    
-    agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Log shutdown success.\n");
-    return AGC_STATUS_SUCCESS;
+
+	agc_thread_join(&st, log_thread);
+
+	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Log shutdown success.\n");
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(void) agc_log_printf(agc_log_type_t type, 
@@ -133,11 +133,11 @@ AGC_DECLARE(void) agc_log_printf(agc_log_type_t type,
                                  agc_log_level_t level,
 								 const char *fmt, ...)
 {
-    va_list ap;
-    
-    va_start(ap, fmt);
-    agc_log_vprintf(type, file, func, line, userdata, level, fmt, ap);
-    va_end(ap);
+	va_list ap;
+
+	va_start(ap, fmt);
+	agc_log_vprintf(type, file, func, line, userdata, level, fmt, ap);
+	va_end(ap);
 }
 
 AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type, 
@@ -148,55 +148,55 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
                                   const char *fmt, 
                                   va_list ap)
 {
-    char *data = NULL;
-    char *content = NULL;
-    int ret = 0;
-    uint32_t len;
-    FILE *console;
-    const char *funcp = (func ? func : "");
-    const char *filep = (file ? agc_cut_path(file) : "");
-    const char *extra_fmt = "%s [%s] %s:%d %s";
-    char *full_fmt = NULL;
-    
-    char date[80] = "";
-    agc_time_t now = {0};
-    agc_time_exp_t tm;
-    
-    agc_log_level_t limit_level = runtime.hard_log_level;
+	char *data = NULL;
+	char *content = NULL;
+	int ret = 0;
+	uint32_t len;
+	FILE *console;
+	const char *funcp = (func ? func : "");
+	const char *filep = (file ? agc_cut_path(file) : "");
+	const char *extra_fmt = "%s [%s] %s:%d %s";
+	char *full_fmt = NULL;
+
+	char date[80] = "";
+	agc_time_t now = {0};
+	agc_time_exp_t tm;
+
+	agc_log_level_t limit_level = runtime.hard_log_level;
 
     
-    if (level > limit_level) {
+	if (level > limit_level) {
 		return;
 	}
     
-    agc_assert(level < AGC_LOG_INVALID);
-    
-    console = runtime.console;
-    
-    //format log datetime
-    now = agc_timer_curtime();
-    // TODO now = agc_micro_time_now();
-    agc_time_exp_lt(&tm, now);
+	agc_assert(level < AGC_LOG_INVALID);
+
+	console = runtime.console;
+
+	//format log datetime
+	now = agc_timer_curtime();
+	// TODO now = agc_micro_time_now();
+	agc_time_exp_lt(&tm, now);
 	agc_snprintf(date, sizeof(date), "%0.4d-%0.2d-%0.2d %0.2d:%0.2d:%0.2d.%0.6d",
 						tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_usec);
-    len = (uint32_t) (strlen(extra_fmt) + strlen(date) + strlen(filep) + 32 + strlen(fmt));
-    full_fmt = malloc(len + 1);
-    agc_assert(full_fmt);
+	len = (uint32_t) (strlen(extra_fmt) + strlen(date) + strlen(filep) + 32 + strlen(fmt));
+	full_fmt = malloc(len + 1);
+	agc_assert(full_fmt);
+
+	agc_snprintf(full_fmt, len, extra_fmt, date, agc_log_level2str(level), filep, line, fmt);
+
+	ret = agc_vasprintf(&data, full_fmt, ap);
+	if (ret == -1) {
+		fprintf(stderr, "Memory Error\n");
+		agc_safe_free(data);
+		agc_safe_free(full_fmt);
+		return;
+	}
     
-    agc_snprintf(full_fmt, len, extra_fmt, date, agc_log_level2str(level), filep, line, fmt);
-    
-    ret = agc_vasprintf(&data, full_fmt, ap);
-    if (ret == -1) {
-        fprintf(stderr, "Memory Error\n");
-        agc_safe_free(data);
-        agc_safe_free(full_fmt);
-        return;
-    }
-    
-    if (console_mods_loaded == 0 || !(LOG_MESSAGE_QUEUE && LOG_THREAD_RUNNING)) {
-        if (console) {
-            int aok = 1;
-            fd_set can_write;
+	if (console_mods_loaded == 0 || !(LOG_MESSAGE_QUEUE && LOG_THREAD_RUNNING)) {
+		if (console) {
+			int aok = 1;
+			fd_set can_write;
 			int fd;
 			struct timeval to;
 
@@ -211,69 +211,69 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
 			} else {
 				aok = 0;
 			}
-            
-            if (aok) {
+	        
+			if (aok) {
 				if (COLORIZE) {
-                    fprintf(console, "%s%s%s", COLORS[level], data, AGC_SEQ_DEFAULT_COLOR);
-                } else {
-                    fprintf(console, "%s", data);
-                }
-            }
-        }
-    }
+					fprintf(console, "%s%s%s", COLORS[level], data, AGC_SEQ_DEFAULT_COLOR);
+				} else {
+					fprintf(console, "%s", data);
+				}
+			}
+		}
+	}
     
-    if ((LOG_MESSAGE_QUEUE && LOG_THREAD_RUNNING) && level <= MAX_LOG_LEVEL) {
-        agc_log_node_t *node = agc_log_node_alloc();
-        node->data = data;
-        data = NULL;
-        agc_set_string(node->file, filep);
+	if ((LOG_MESSAGE_QUEUE && LOG_THREAD_RUNNING) && level <= MAX_LOG_LEVEL) {
+		agc_log_node_t *node = agc_log_node_alloc();
+		node->data = data;
+		data = NULL;
+		agc_set_string(node->file, filep);
 		agc_set_string(node->func, funcp);
-        node->line = line;
-        node->level = level;
-        node->timestamp = now;
-        node->type = type;
-        node->userdata = NULL;
-        if (agc_queue_trypush(LOG_MESSAGE_QUEUE, node) != AGC_STATUS_SUCCESS) {
+		node->line = line;
+		node->level = level;
+		node->timestamp = now;
+		node->type = type;
+		node->userdata = NULL;
+		if (agc_queue_trypush(LOG_MESSAGE_QUEUE, node) != AGC_STATUS_SUCCESS) {
 			agc_log_node_free(&node);
 		}
-    }
+	}
     
-    agc_safe_free(data);
-    agc_safe_free(full_fmt);
+	agc_safe_free(data);
+	agc_safe_free(full_fmt);
 }
            
 AGC_DECLARE(agc_status_t) agc_log_bind_logger(agc_log_function_t function, agc_log_level_t level, agc_bool_t is_console)
 {
-    agc_log_binding_t *binding = NULL, *ptr = NULL;
-    agc_assert(function != NULL);
-    
-    if (!(binding = agc_memory_alloc(LOG_MEMORY_POOL, sizeof(*binding)))) {
+	agc_log_binding_t *binding = NULL, *ptr = NULL;
+	agc_assert(function != NULL);
+
+	if (!(binding = agc_memory_alloc(LOG_MEMORY_POOL, sizeof(*binding)))) {
 		return AGC_STATUS_MEMERR;
 	}
-    
-    if ((uint8_t) level > MAX_LOG_LEVEL) {
+
+	if ((uint8_t) level > MAX_LOG_LEVEL) {
 		MAX_LOG_LEVEL = level;
 	}
-    
-    binding->function = function;
+
+	binding->function = function;
 	binding->level = level;
 	binding->is_console = is_console;
-    
-    agc_mutex_lock(LOGGER_BIND_LOCK);
-    for (ptr = LOGGER_BINDINGS; ptr && ptr->next; ptr = ptr->next);
-    if (ptr) {
+
+	agc_mutex_lock(LOGGER_BIND_LOCK);
+	for (ptr = LOGGER_BINDINGS; ptr && ptr->next; ptr = ptr->next);
+	if (ptr) {
 		ptr->next = binding;
 	} else {
 		LOGGER_BINDINGS = binding;
 	}
-    
-    if (is_console) {
+
+	if (is_console) {
 		console_mods_loaded++;
 	}
-    
-    mods_loaded++;
-    agc_mutex_unlock(LOGGER_BIND_LOCK);
-    return AGC_STATUS_SUCCESS;
+
+	mods_loaded++;
+	agc_mutex_unlock(LOGGER_BIND_LOCK);
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_log_unbind_logger(agc_log_function_t function)

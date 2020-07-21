@@ -214,6 +214,8 @@ agc_status_t agcmq_producer_send(agcmq_producer_profile_t *producer, agcmq_messa
 	para = producer->conn_parameter;
 
 	memset(&props, 0, sizeof(amqp_basic_properties_t));
+
+	props._flags |= AMQP_BASIC_CONTENT_TYPE_FLAG;
 	props.content_type = amqp_cstring_bytes(MQ_DEFAULT_CONTENT_TYPE);
 
 	if(para->delivery_mode > 0) {
