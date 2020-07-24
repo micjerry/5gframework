@@ -89,18 +89,15 @@ agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, agcmq_co
 	agcmq_connection_info_t *conn_info;
 	int amqp_status = -1;
 	amqp_rpc_reply_t reply;
-	amqp_connection_state_t oldConnection;
+	amqp_connection_state_t newConnection = amqp_new_connection();
+	amqp_connection_state_t oldConnection = NULL;
 
 	if (!conn_infos || !conn)
 		return AGC_STATUS_GENERR;
 
 	oldConnection = conn->state;
-	if (oldConnection) {
-		amqp_destroy_connection(oldConnection);
-	}
 	
-	conn->state= amqp_new_connection();
-	socket = amqp_tcp_socket_new(conn->state);
+	socket = amqp_tcp_socket_new(newConnection);
 
 	if (!socket) {
 		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Create amqp socket failed.\n");
@@ -126,7 +123,7 @@ agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, agcmq_co
 
 	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Profile[%s] connect amqp %s:%d success.\n", profile_name, conn_info->hostname, conn_info->port);
 
-	reply = amqp_login(conn->state, conn_info->virtualhost, 0, AGCMQ_MAX_FRAME, 0, AMQP_SASL_METHOD_PLAIN,
+	reply = amqp_login(newConnection, conn_info->virtualhost, 0, AGCMQ_MAX_FRAME, 0, AMQP_SASL_METHOD_PLAIN,
                                conn_info->username, conn_info->password);
 
 	if (agcmq_parse_amqp_reply(reply, "Logining in")) {
@@ -134,13 +131,18 @@ agc_status_t agcmq_connection_open(agcmq_connection_info_t *conn_infos, agcmq_co
 		return AGC_STATUS_GENERR;
 	}
 	
-	amqp_channel_open(conn->state, 1);
+	amqp_channel_open(newConnection, 1);
 	
 	if (agcmq_parse_amqp_reply(reply, "Openning channel")) {
 		return AGC_STATUS_GENERR;
 	}
 
+	conn->state = newConnection;
 	conn->active = AGC_TRUE;
+
+	if (oldConnection) {
+		amqp_destroy_connection(oldConnection);
+	}
 
 	return AGC_STATUS_SUCCESS;
 }

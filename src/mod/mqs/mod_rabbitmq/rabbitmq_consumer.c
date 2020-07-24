@@ -110,6 +110,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 			
 			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(consumer->mq_conn->state), "Declaring exchange")) {
 				agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] declaring exchange failed.\n", consumer->name);
+				agcmq_connection_close(consumer->mq_conn);
 				agc_sleep(para->reconnect_interval_ms* 1000);
 				continue;
 			}
@@ -124,6 +125,7 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 										amqp_empty_table);
 			if (agcmq_parse_amqp_reply(amqp_get_rpc_reply(consumer->mq_conn->state), "Declaring queue"))  {
 				agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Consumer[%s] declaring queue failed.\n", consumer->name);
+				agcmq_connection_close(consumer->mq_conn);
 				agc_sleep(para->reconnect_interval_ms* 1000);
 				continue;
 			}
