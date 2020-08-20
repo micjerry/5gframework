@@ -328,7 +328,7 @@ static agc_status_t agc_loadable_module_processmodule(char *key, agc_loadable_mo
 	new_module->key = agc_core_strdup(new_module->pool, key);
 	agc_mutex_lock(loadable_modules.mutex);
 
-	agc_hash_set(loadable_modules.module_hash, key, AGC_HASH_KEY_STRING, new_module);
+	agc_hash_set(loadable_modules.module_hash, new_module->key , AGC_HASH_KEY_STRING, new_module);
 
 	agc_mutex_unlock(loadable_modules.mutex);
 	return AGC_STATUS_SUCCESS;
