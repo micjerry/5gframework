@@ -188,6 +188,8 @@ typedef void (*agc_event_callback_func)(void *data);
 typedef struct keyvalues_s keyvalues_t;
 typedef struct keys_s keys_t;
 
+typedef struct agc_odbc_handle agc_odbc_handle_t;
+
 AGC_END_EXTERN_C
 
 #endif

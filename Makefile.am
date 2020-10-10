@@ -50,6 +50,8 @@ endif
 CORE_CFLAGS  = $(AM_LIBAPR_CFLAGS) $(AM_LIBAPR_CPPFLAGS)
 CORE_CFLAGS += $(AM_LIBAPU_CPPFLAGS)
 
+CORE_CFLAGS += $(ODBC_INC_FLAGS)
+
 AM_CFLAGS   = $(AGC_AM_CFLAGS) $(YAML_CFLAGS) $(SQLITE_CFLAGS)
 AM_CXXFLAGS = $(AGC_AM_CXXFLAGS)
 AM_CPPFLAGS = $(AGC_AM_CPPFLAGS)
@@ -86,6 +88,7 @@ library_include_HEADERS = \
 	src/include/agc_cache.h \
 	src/include/agc_db.h \
 	src/include/agc_sctp.h \
+	src/include/agc_odbc.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -112,6 +115,7 @@ libagc_la_SOURCES = \
 	src/agc_cache.c \
 	src/agc_db.c \
 	src/agc_sctp.c \
+	src/agc_odbc.c \
 	$(NULL)
 
 $(libagc_la_SOURCES): $(CORE_LIBS) $(agc_builddir)/modules.conf  
@@ -120,6 +124,9 @@ libagc_la_CFLAGS  = $(CORE_CFLAGS)
 libagc_la_LDFLAGS = -version-info 1:0:0 $(AM_LDFLAGS) -no-undefined
 libagc_la_LIBADD = $(CORE_LIBS) $(APR_LIBS) $(YAML_LIBS) $(SQLITE_LIBS)
 libagc_la_DEPENDENCIES = $(BUILT_SOURCES)
+
+libagc_la_LDFLAGS += $(ODBC_LIB_FLAGS)
+
 ##
 ## Applications
 ##
@@ -142,6 +149,8 @@ agc_SOURCES = src/agc.c
 agc_CFLAGS  = $(AM_CFLAGS) $(CORE_CFLAGS)
 agc_LDFLAGS = $(AM_LDFLAGS) -lpthread 
 agc_LDADD   = libagc.la libs/apr/libapr-1.la
+
+agc_LDADD += $(ODBC_LIB_FLAGS)
 
 ##
 ## Dependency targets

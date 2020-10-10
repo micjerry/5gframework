@@ -9,6 +9,8 @@ AGC_BEGIN_EXTERN_C
 
 #define agc_yield(ms) agc_sleep(ms);
 
+#define agc_str_nil(s) (s ? s : "")
+
 /* https://code.google.com/p/stringencoders/wiki/PerformanceAscii 
    http://www.azillionmonkeys.com/qed/asmexample.html
 */

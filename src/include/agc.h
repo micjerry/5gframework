@@ -48,5 +48,6 @@
 #include "agc_api.h"
 #include "agc_cache.h"
 #include "agc_db.h"
+#include "agc_odbc.h"
 
 #endif

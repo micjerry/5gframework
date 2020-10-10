@@ -140,6 +140,12 @@ AS_IF([test "x$enable_core_libedit_support" != "xno"], [
 AC_ARG_ENABLE(64,
 [AC_HELP_STRING([--enable-64],[build with 64 bit support])],[enable_64="$enable_64"],[enable_64="no"])
 
+#  Check odbc devel
+AX_LIB_ODBC
+if ! test "$ac_cv_found_odbc" = "yes" ; then
+  AC_MSG_ERROR([no usable libodbc; please install unixodbc devel package or equivalent])
+fi
+
 #######################################
 ####           functions           ####
 #######################################
