@@ -7,6 +7,10 @@
 agc_directories_t AGC_GLOBAL_dirs = { 0 };
 struct agc_runtime runtime = { 0 };
 
+#define CORE_CONFIG_FILE "agc.yml"
+
+static void agc_load_config(const char *file);
+
 AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 {
 	agc_uuid_t uuid;
@@ -44,6 +48,9 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 	if (console) {
 		runtime.console = stdout;
 	}
+
+	//load config file
+	agc_load_config();
     
 	//init log 
 	if (agc_log_init(runtime.memory_pool, AGC_FALSE) != AGC_STATUS_SUCCESS) {
@@ -363,5 +370,70 @@ AGC_DECLARE(void) agc_core_set_signal_handlers(void)
 	signal(SIGUSR1, handle_SIGHUP);
 #endif
 	signal(SIGHUP, handle_SIGHUP);	
+}
+
+static void agc_load_config(const char *file)
+{
+	FILE *file;
+	yaml_parser_t parser;
+	yaml_token_t token;
+	int done = 0;
+	int error = 0;
+	int iskey = 0;
+	char *filepath = NULL;
+	char **datap = NULL;
+	const char *err;
+
+	runtime.core_config_file = agc_core_sprintf(runtime.memory_pool, "%s%s%s", AGC_GLOBAL_dirs.conf_dir, AGC_PATH_SEPARATOR, CORE_CONFIG_FILE);
+	if (!runtime.core_config_file)
+		return;
+	
+	file = fopen(runtime.core_config_file, "rb");
+	assert(file);
+	assert(yaml_parser_initialize(&parser));
+	yaml_parser_set_input_file(&parser, file);
+
+	while (!done) {
+		if (!yaml_parser_scan(&parser, &token)) {
+			error = 1;
+			break;
+		}
+
+		switch(token.type)
+		{
+			case YAML_KEY_TOKEN:
+				iskey = 1;
+				break;
+			case YAML_VALUE_TOKEN:
+				iskey = 0;
+				break;
+			case YAML_SCALAR_TOKEN:
+				{
+					if (iskey)
+					{
+						if (strcmp(token.data.scalar.value, "odbc_dsn") == 0)
+						{
+							datap = &runtime.odbc_dsn;
+						}  else {
+							datap = NULL;
+						}
+					} else {
+						if (datap) {
+							*datap = agc_core_strdup(runtime.memory_pool, token.data.scalar.value);
+						}
+					}
+				}
+                		break;
+			default:
+				break;
+		}
+
+		done = (token.type == YAML_STREAM_END_TOKEN);
+		yaml_token_delete(&token);
+	}
+
+	yaml_parser_delete(&parser);
+	assert(!fclose(file));
+	
 }
 
