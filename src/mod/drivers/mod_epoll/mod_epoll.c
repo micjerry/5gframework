@@ -307,10 +307,12 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
 				routine = c->routine;
 				if (!routine || !routine->active)
 					continue;
-                
-				if ((event_flag & (EPOLLERR|EPOLLHUP)) && routine->err_handle) {
-					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "epoll get err event of %d.\n", c->fd);
-					routine->err_handle(c);
+
+				//&& routine->err_handle
+				if (event_flag & (EPOLLERR|EPOLLHUP)) {
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "epoll get err event of fd:%d ev:%04XD.\n", c->fd, event_flag);
+					event_flag |= EPOLLIN | EPOLLOUT;
+					//routine->err_handle(c);
 				}
                 
 				if ((event_flag & EPOLLIN) && routine->read_handle && routine->active) {

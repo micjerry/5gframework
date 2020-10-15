@@ -11,9 +11,6 @@ AGC_BEGIN_EXTERN_C
 typedef struct sqlite3 agc_db_t;
 typedef struct sqlite3_stmt agc_db_stmt_t;
 
-typedef int (*agc_db_callback_func_t) (void *pArg, int argc, char **argv, char **columnNames);
-typedef int (*agc_db_err_callback_func_t) (void *pArg, const char *errmsg);
-
 typedef void (*agc_db_destructor_type_t) (void *);
 #define AGC_CORE_DB_STATIC      ((agc_db_destructor_type_t)0)
 #define AGC_CORE_DB_TRANSIENT   ((agc_db_destructor_type_t)-1)

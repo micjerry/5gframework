@@ -36,9 +36,13 @@ AGC_DECLARE(agc_odbc_status_t) agc_odbc_SQLEndTran(agc_odbc_handle_t *handle, ag
 AGC_DECLARE(agc_odbc_status_t) agc_odbc_statement_handle_free(agc_odbc_statement_handle_t *stmt);
 
 
-AGC_DECLARE(agc_odbc_status_t) agc_odbc_handle_callback_exec(const char *file, const char *func, int line, agc_odbc_handle_t *handle,
+AGC_DECLARE(agc_odbc_status_t) _agc_odbc_handle_callback_exec(const char *file, const char *func, int line, agc_odbc_handle_t *handle,
 																			   const char *sql, agc_db_callback_func_t callback, void *pdata,
 																			   char **err);
+#define agc_odbc_handle_callback_exec(handle,  sql,  callback, pdata, err) \
+		_agc_odbc_handle_callback_exec(__FILE__, (char * )__AGC_FUNC__, __LINE__, \
+												  handle, sql, callback, pdata, err)
+												  
 AGC_DECLARE(char *) agc_odbc_handle_get_error(agc_odbc_handle_t *handle, agc_odbc_statement_handle_t stmt);
 
 AGC_DECLARE(int) agc_odbc_handle_affected_rows(agc_odbc_handle_t *handle);

@@ -190,6 +190,11 @@ typedef struct keys_s keys_t;
 
 typedef struct agc_odbc_handle agc_odbc_handle_t;
 
+typedef struct agc_sql_handle agc_sql_handle_t;
+
+typedef int (*agc_db_callback_func_t) (void *pArg, int argc, char **argv, char **columnNames);
+typedef int (*agc_db_err_callback_func_t) (void *pArg, const char *errmsg);
+
 AGC_END_EXTERN_C
 
 #endif

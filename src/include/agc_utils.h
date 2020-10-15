@@ -192,6 +192,8 @@ static inline int _zstr(const char *s)
 #define agc_zmalloc(ptr, len) (void)(assert((ptr = calloc(1, (len)))),ptr)
 #define agc_strdup(ptr, s) (void)(assert(((ptr) = strdup((s)))),ptr)
 
+#define end_of_p(_s) (*_s == '\0' ? _s : _s + strlen(_s) - 1)
+
 AGC_DECLARE(const char *) agc_cut_path(const char *in);
 AGC_DECLARE(agc_bool_t) agc_is_number(const char *str);
 AGC_DECLARE(unsigned int) agc_atoui(const char *nptr);

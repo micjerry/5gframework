@@ -9,7 +9,7 @@ struct agc_runtime runtime = { 0 };
 
 #define CORE_CONFIG_FILE "agc.yml"
 
-static void agc_load_config(const char *file);
+static void agc_load_config();
 
 AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 {
@@ -19,6 +19,8 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 	gethostname(runtime.hostname, sizeof(runtime.hostname));
 	runtime.cpu_count = sysconf (_SC_NPROCESSORS_ONLN);
 	runtime.hard_log_level = AGC_LOG_DEBUG;
+	runtime.max_db_handles = 50;
+	runtime.db_handle_timeout = 5000000;
     
 	//initial random
 	srand(time(NULL));
@@ -69,6 +71,12 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Timer init failed.\n");
 		return AGC_STATUS_GENERR;
 	}
+
+	//init sql
+	if (agc_sql_start(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_CRIT, "Sql init failed.\n");
+		return AGC_STATUS_GENERR;
+	}
     
 	//init connection
 	if (agc_conn_init(runtime.memory_pool) != AGC_STATUS_SUCCESS) {
@@ -101,6 +109,7 @@ AGC_DECLARE(agc_status_t) agc_core_destroy()
 {
 	agc_diver_shutdown();
 	agc_conn_shutdown();
+	agc_sql_stop();
 	agc_timer_shutdown();
 	agc_event_shutdown();
 	agc_log_shutdown();
@@ -372,7 +381,7 @@ AGC_DECLARE(void) agc_core_set_signal_handlers(void)
 	signal(SIGHUP, handle_SIGHUP);	
 }
 
-static void agc_load_config(const char *file)
+static void agc_load_config()
 {
 	FILE *file;
 	yaml_parser_t parser;

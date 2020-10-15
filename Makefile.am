@@ -89,6 +89,7 @@ library_include_HEADERS = \
 	src/include/agc_db.h \
 	src/include/agc_sctp.h \
 	src/include/agc_odbc.h \
+	src/include/agc_sql.h \
 	src/include/private/agc_core_pvt.h
  
 nodist_libagc_la_SOURCES = \
@@ -116,6 +117,7 @@ libagc_la_SOURCES = \
 	src/agc_db.c \
 	src/agc_sctp.c \
 	src/agc_odbc.c \
+	src/agc_sql.c \
 	$(NULL)
 
 $(libagc_la_SOURCES): $(CORE_LIBS) $(agc_builddir)/modules.conf  

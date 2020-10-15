@@ -262,10 +262,8 @@ error:
 
 	
 	if (err_str) {
-		if (!agc_stristr("already exists", err_str) && !agc_stristr("duplicate key name", err_str)) {
-			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "ERR: [%s]\n[%s]\n", sql, agc_str_nil(err_str));
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "ERR: [%s]\n[%s]\n", sql, agc_str_nil(err_str));
 
-		}
 		if (err) {
 			*err = err_str;
 		} else {
@@ -316,7 +314,7 @@ AGC_DECLARE(agc_odbc_status_t) agc_odbc_handle_exec_string(agc_odbc_handle_t *ha
 		SQLDescribeCol(stmt, 1, name, sizeof(name), &NameLength, &DataType, &ColumnSize, &DecimalDigits, &Nullable);
 		SQLGetData(stmt, 1, SQL_C_CHAR, (SQLCHAR *) resbuf, (SQLLEN) len, NULL);
 
-		sstatus = SWITCH_ODBC_SUCCESS;
+		sstatus = AGC_ODBC_SUCCESS;
 	}
 
 done:
@@ -354,7 +352,7 @@ AGC_DECLARE(agc_odbc_status_t) agc_odbc_statement_handle_free(agc_odbc_statement
 	return AGC_ODBC_SUCCESS;
 }
 
-AGC_DECLARE(agc_odbc_status_t) agc_odbc_handle_callback_exec(const char *file, const char *func, int line, agc_odbc_handle_t *handle,
+AGC_DECLARE(agc_odbc_status_t) _agc_odbc_handle_callback_exec(const char *file, const char *func, int line, agc_odbc_handle_t *handle,
 																			   const char *sql, agc_db_callback_func_t callback, void *pdata,
 																			   char **err)
 {
@@ -529,7 +527,7 @@ static agc_odbc_status_t init_odbc_handles(agc_odbc_handle_t *handle, agc_bool_t
 		if ((result != SQL_SUCCESS) && (result != SQL_SUCCESS_WITH_INFO)) {
 			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Error AllocHandle\n");
 			handle->env = SQL_NULL_HANDLE; /* Reset handle value, just in case */
-			return SWITCH_ODBC_FAIL;
+			return AGC_ODBC_FAIL;
 		}
 
 		result = SQLSetEnvAttr(handle->env, SQL_ATTR_ODBC_VERSION, (void *) SQL_OV_ODBC3, 0);
