@@ -1,0 +1,17 @@
+name: "config"
+type: "consumer"
+connections:
+    -
+      hostname    : "127.0.0.1"
+      virtualhost : "/"
+      username    : "agcore"
+      password    : "adKLps28"
+      port        : "5672"
+      heartbeat   : "0"
+
+parameters:
+    exname: "TAP.Commands"
+    binding_key: "agc.jsoncmd"
+    reconnect_interval_ms : "1000"
+    queuename: "agc.jsoncmd"
+    

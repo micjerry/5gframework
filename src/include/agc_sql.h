@@ -26,7 +26,6 @@ AGC_DECLARE(int) agc_sql_affected_rows(agc_sql_handle_t *dbh);
 AGC_DECLARE(agc_status_t) agc_sql_persistant_execute(agc_sql_handle_t *dbh, const char *sql, uint32_t retries);
 
 
-
 AGC_END_EXTERN_C
 
 #endif

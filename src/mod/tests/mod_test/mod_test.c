@@ -10,7 +10,8 @@ test_api_command_t test_api_commands[] = {
 	{"event", test_event_api, "event", ""},
 	{"mq", test_mq_api, "mq", ""},
 	{"timer", test_timer_api, "timer", ""},
-	{"db", test_db_api, "db", ""}
+	{"db", test_db_api, "db", ""},
+	{"sql", test_sql_api, "sql", ""}
 };
 
 AGC_STANDARD_API(test_api_main)
