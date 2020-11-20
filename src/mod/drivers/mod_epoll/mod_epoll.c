@@ -94,7 +94,8 @@ static agc_status_t agc_epoll_add_connection(agc_connection_t *c)
 	int index = 0;
 	struct epoll_event  ee;
 
-	ee.events = EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP;
+	//EPOLLET EPOLLOUT
+	ee.events = EPOLLIN|EPOLLRDHUP;
 	ee.data.ptr = (void *) (c);
     
 	index = agc_random(EPOLL_MAX_DISPATCHER);
@@ -108,6 +109,7 @@ static agc_status_t agc_epoll_add_connection(agc_connection_t *c)
 
 	c->routine->active = 1;
 	c->thread_index = index;
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Epoll add connection %d ep_thread %d\n", c->fd, index);
 	//agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
 	return AGC_STATUS_SUCCESS;
 }
@@ -132,6 +134,7 @@ static agc_status_t agc_epoll_del_connection(agc_connection_t *c)
 	}
 
 	//agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Epoll remove connection %d\n", c->fd);
 	return AGC_STATUS_SUCCESS;
 }
 
@@ -163,7 +166,8 @@ static agc_status_t agc_epoll_add_event(agc_connection_t *c, uint32_t event)
 		index = agc_random(EPOLL_MAX_DISPATCHER);
 	}
 
-	ee.events = events | EPOLLET;
+	//EPOLLET
+	ee.events = events;
 	ee.data.ptr = (void *) (c);
 
 
@@ -177,6 +181,7 @@ static agc_status_t agc_epoll_add_event(agc_connection_t *c, uint32_t event)
 	
 	c->routine->active = 1;
 	//agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Epoll connection %d add event %u\n", c->fd, event);
 
 	return AGC_STATUS_SUCCESS;
 }
@@ -201,21 +206,24 @@ static agc_status_t agc_epoll_del_event(agc_connection_t *c, uint32_t event)
     
 	if (c->routine->active) {
 		op = EPOLL_CTL_MOD;
-		ee.events = prev | EPOLLET;
+		// | EPOLLET
+		ee.events = prev;
 		ee.data.ptr = (void *) (c);
 	} else {
 		return AGC_STATUS_SUCCESS;
 	}
     
-    //agc_mutex_lock(EPOLL_THREADS_MUTEXS[index]);
-    if (epoll_ctl(EPOLLFDS[index], op, c->fd, &ee) == -1) {
-        agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Epoll del event failed.\n");
-        //agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
-        return AGC_STATUS_GENERR;
-    }
-    //agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
+	//agc_mutex_lock(EPOLL_THREADS_MUTEXS[index]);
+	if (epoll_ctl(EPOLLFDS[index], op, c->fd, &ee) == -1) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Epoll del event failed.\n");
+		//agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
+ 		return AGC_STATUS_GENERR;
+	}
+	//agc_mutex_unlock(EPOLL_THREADS_MUTEXS[index]);
+
+	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Epoll connection %d del event %u\n", c->fd, event);
     
-    return AGC_STATUS_SUCCESS;
+	return AGC_STATUS_SUCCESS;
 }
 
 static void agc_epoll_launch_dispatch_threads()
@@ -278,6 +286,7 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
 			break;
 
 		//agc_mutex_lock(EPOLL_THREADS_MUTEXS[my_id]);
+		agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "ep_thread %d  to wait.\n", my_id);
 		ret = epoll_wait(epollfd, events, MAX_EPOLLEVENTS, -1);
 		//agc_mutex_unlock(EPOLL_THREADS_MUTEXS[my_id]);
 
@@ -301,7 +310,9 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
 			if (c->listening) {
 				listening = c->listening;
 				if ((event_flag & EPOLLIN) && listening->handler) {
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "ep_thread %d epoll get new socket event of %d.\n", my_id, c->fd);
 					listening->handler(c);
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "ep_thread %d epoll new socket event of %d finished.\n", my_id, c->fd);
 				}
 			} else {
 				routine = c->routine;
@@ -316,13 +327,15 @@ static void *agc_epoll_dispatch_event(agc_thread_t *thread, void *obj)
 				}
                 
 				if ((event_flag & EPOLLIN) && routine->read_handle && routine->active) {
-					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "epoll get read event of %d.\n", c->fd);
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "ep_thread %d epoll get read event of %d.\n", my_id, c->fd);
 					routine->read_handle(c);
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "ep_thread %d epoll handle read event of %d finished.\n", my_id, c->fd);
 				}
                 
 				if ((event_flag & EPOLLOUT) && routine->write_handle && routine->active) {
-					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "epoll get write event of %d.\n", c->fd);
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "ep_thread %d epoll get write event of %d.\n", my_id, c->fd);
 					routine->write_handle(c);
+					agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "ep_thread %d epoll handle write event of %d finished.\n", my_id, c->fd);
 				}
 			}
 		}

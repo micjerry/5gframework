@@ -33,6 +33,7 @@ typedef struct
     int32_t msg_flags;
 	socklen_t addrlen;
 	agc_std_sockaddr_t remote_addr;
+	uint32_t max_stream_no;	
 }agc_sctp_stream_t;
 
 AGC_DECLARE(agc_status_t) agc_sctp_server(agc_sctp_sock_t *sock, agc_std_sockaddr_t *local_addr, socklen_t addrlen, agc_sctp_config_t *cfg);

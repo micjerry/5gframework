@@ -12,6 +12,14 @@ struct agc_event_node {
 	struct agc_event_node *next;
 };
 
+struct fast_event_node {
+	agc_event_header_t **headers;
+	int type;
+	int header_numbers;
+};
+
+typedef struct fast_event_node fast_event_node_t;
+
 static volatile int SYSTEM_RUNNING = 0;
 static int DISPATCH_THREAD_COUNT = 0;
 static agc_memory_pool_t *RUNTIME_POOL = NULL;
@@ -28,6 +36,8 @@ static agc_queue_t **EVENT_DISPATCH_QUEUES = NULL;
 static agc_thread_t **EVENT_DISPATCH_THREADS = NULL;
 static uint8_t *EVENT_DISPATCH_QUEUE_RUNNING = NULL;
 
+static agc_queue_t **FAST_EVENT_QUEUES = NULL;
+
 static agc_thread_rwlock_t *EVENT_NODES_RWLOCK = NULL;
 static agc_event_node_t *EVENT_NODES[EVENT_ID_LIMIT] = { NULL };
 
@@ -39,11 +49,20 @@ static void agc_event_deliver(agc_event_t **event);
 
 static agc_status_t agc_event_base_add_header(agc_event_t *event, const char *header_name, char *data);
 
+static agc_status_t agc_event_base_add_header_nocheck(agc_event_t *event, const char *header_name, char *data);
+
 static agc_event_header_t *agc_event_get_header_ptr(agc_event_t *event, const char *header_name);
 
 static agc_event_header_t *new_header(const char *header_name);
 
 static void init_ids();
+
+static agc_status_t fast_event_create(agc_event_t **event, int fast_event_type, int event_id, const char **headers, 
+	const int *valuelengths, int headernumbers, int bodylength);
+
+static inline void fast_add_header(agc_event_t *event, agc_event_header_t *header);
+
+static inline agc_event_header_t *fast_get_header(agc_event_t *event, int index);
 
 AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
 {
@@ -51,7 +70,7 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
     
 	assert(pool != NULL);
     
-	MAX_DISPATCHER = (agc_core_cpu_count() / 2) + 1;
+	MAX_DISPATCHER = (2 * agc_core_cpu_count())  + 1;
 	if (MAX_DISPATCHER < 2) {
 		MAX_DISPATCHER = 2;
 	}
@@ -62,9 +81,12 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
 	agc_mutex_init(&EVENTSTATE_MUTEX, AGC_MUTEX_NESTED, RUNTIME_POOL);
 	agc_thread_rwlock_create(&EVENT_TEMPLATES_RWLOCK, RUNTIME_POOL);
 	agc_thread_rwlock_create(&EVENT_NODES_RWLOCK, RUNTIME_POOL);
+
+
+	FAST_EVENT_QUEUES = agc_memory_alloc(RUNTIME_POOL, EVENT_FAST_TYPE_Invalid * sizeof(agc_queue_t *));
     
-	EVENT_DISPATCH_QUEUES = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(agc_queue_t *));
-	EVENT_DISPATCH_QUEUE_RUNNING = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER*sizeof(uint8_t));
+	EVENT_DISPATCH_QUEUES = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER * sizeof(agc_queue_t *));
+	EVENT_DISPATCH_QUEUE_RUNNING = agc_memory_alloc(RUNTIME_POOL, MAX_DISPATCHER * sizeof(uint8_t));
 
 	init_ids();
     
@@ -78,6 +100,11 @@ AGC_DECLARE(agc_status_t) agc_event_init(agc_memory_pool_t *pool)
 	SYSTEM_RUNNING = 1;
     
 	agc_event_launch_dispatch_threads();
+
+	if (agc_event_fast_initial(EVENT_FAST_TYPE_CallBack, 0, 1000, NULL, NULL, 0, 0) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Event init failed.\n");
+		return AGC_STATUS_FALSE;
+	}
     
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Event init success.\n");
     
@@ -263,6 +290,23 @@ AGC_DECLARE(agc_status_t) agc_event_add_header(agc_event_t *event, const char *h
 		return AGC_STATUS_MEMERR;
 	}
     
+	return agc_event_base_add_header_nocheck(event, header_name, data);
+}
+
+AGC_DECLARE(agc_status_t) agc_event_add_header_repeatcheck(agc_event_t *event, const char *header_name, const char *fmt, ...)
+{
+	int ret = 0;
+	char *data;
+	va_list ap;
+    
+	va_start(ap, fmt);
+	ret = agc_vasprintf(&data, fmt, ap);
+	va_end(ap);
+    
+	if (ret == -1) {
+		return AGC_STATUS_MEMERR;
+	}
+    
 	return agc_event_base_add_header(event, header_name, data);
 }
 
@@ -435,6 +479,10 @@ AGC_DECLARE(agc_status_t) agc_event_fire(agc_event_t **event)
 	if (SYSTEM_RUNNING == 0) {
 		agc_event_destroy(event);
 		return AGC_STATUS_SUCCESS;
+	}
+
+	if (eventp->debug_id) {
+		agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "event: %d received.\n", eventp->debug_id);
 	}
 
 	if (eventp->source_id != EVENT_NULL_SOURCEID) {
@@ -668,6 +716,9 @@ static void *agc_event_dispatch_thread(agc_thread_t *thread, void *obj)
 	for (;;) {
 		void *pop = NULL;
 		agc_event_t *event = NULL;
+		agc_time_t time_start;
+		int debug_id = 0;
+		
 
 		if (!SYSTEM_RUNNING) {
 			break;
@@ -683,7 +734,16 @@ static void *agc_event_dispatch_thread(agc_thread_t *thread, void *obj)
 		}
 
 		event = (agc_event_t *) pop;
+		if ((debug_id = event->debug_id)) {
+			agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "event: %d handle by event_thread %d .\n", debug_id, my_id);
+			time_start = agc_time_now();
+		}
 		agc_event_deliver(&event);
+		if (debug_id) {
+			int time_used = 0;
+			time_used = (int)((agc_time_now() - time_start)/1000);
+			agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "event: %d handle by event_thread %d finished %d milliseconds used .\n", debug_id, my_id, time_used);
+		}
 	}
 
 	agc_mutex_lock(EVENTSTATE_MUTEX);
@@ -705,9 +765,17 @@ static void agc_event_deliver(agc_event_t **event)
 	if (SYSTEM_RUNNING) {
 		if (pevent->call_back) {
 			//agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "Dispatch callback.\n");
+			if (pevent->debug_id) {
+				agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "event: %d callback trigger.\n", pevent->debug_id);
+			}
+			
 			pevent->call_back(pevent->context);
 		} else {
 			agc_thread_rwlock_rdlock(EVENT_NODES_RWLOCK);
+			if (pevent->debug_id) {
+				agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "event: %d subs trigger.\n", pevent->debug_id);
+			}
+			
 			event_id = pevent->event_id;
 			for (node = EVENT_NODES[event_id]; node; node = node->next) {
 				node->callback(pevent);
@@ -720,8 +788,12 @@ static void agc_event_deliver(agc_event_t **event)
 			agc_thread_rwlock_unlock(EVENT_NODES_RWLOCK);
 		}
 	}
-    
-	agc_event_destroy(event);
+
+	if (pevent->fast) {
+		agc_event_fast_release(event);
+	} else {
+		agc_event_destroy(event);
+	}
 }
 
 static agc_status_t agc_event_base_add_header(agc_event_t *event, const char *header_name, char *data)
@@ -752,6 +824,28 @@ static agc_status_t agc_event_base_add_header(agc_event_t *event, const char *he
 	return AGC_STATUS_SUCCESS;
 }
 
+
+static agc_status_t agc_event_base_add_header_nocheck(agc_event_t *event, const char *header_name, char *data)
+{
+	agc_event_header_t *header = NULL;
+
+	header = new_header(header_name);
+
+	assert(header);
+    
+	header->value = data;
+    
+	if (event->last_header) {
+		event->last_header->next = header;
+	} else {
+		event->headers = header;
+		header->next = NULL;
+	}
+    
+	event->last_header = header;
+    
+	return AGC_STATUS_SUCCESS;
+}
 static agc_event_header_t *agc_event_get_header_ptr(agc_event_t *event, const char *header_name)
 {
 	agc_event_header_t *hp;
@@ -780,4 +874,278 @@ static agc_event_header_t *new_header(const char *header_name)
 	return header;
 }
 
+AGC_DECLARE(agc_status_t) agc_event_fast_initial(int fast_event_type, int event_id, int capacity, 
+										const char **headers, const int *valuelengths, int headernumbers, int bodylength)
+{
+	int i = 0;
+	agc_event_t *new_event = NULL;
+	
+	if (fast_event_type >= EVENT_FAST_TYPE_Invalid) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent invalid event type:%d.\n", fast_event_type);
+		return AGC_STATUS_GENERR;
+	}
+
+	if (FAST_EVENT_QUEUES[fast_event_type] != NULL) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent event type:%d already initialed.\n", fast_event_type);
+		return AGC_STATUS_GENERR;
+	}
+
+	agc_queue_create(&FAST_EVENT_QUEUES[fast_event_type], (capacity + 10), RUNTIME_POOL);
+
+	for (i = 0; i < capacity; i++ ) {
+		if (fast_event_create(&new_event, fast_event_type, event_id, headers, valuelengths, headernumbers, bodylength) != AGC_STATUS_SUCCESS) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent event type:%d create event failed.\n", fast_event_type);
+			return AGC_STATUS_GENERR;
+		}
+
+		if (agc_queue_trypush(FAST_EVENT_QUEUES[fast_event_type], new_event) != AGC_STATUS_SUCCESS) {
+			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent event type:%d push event failed.\n", fast_event_type);
+			return AGC_STATUS_GENERR;
+		}
+
+		new_event = NULL;
+	}
+
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_alloc(agc_event_t **event, int fast_event_type)
+{
+	void *pop = NULL;
+	
+	if (fast_event_type >= EVENT_FAST_TYPE_Invalid) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent invalid event type:%d.\n", fast_event_type);
+		return AGC_STATUS_GENERR;
+	}
+
+	if (FAST_EVENT_QUEUES[fast_event_type] == NULL) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent event type:%d not initialed.\n", fast_event_type);
+		return AGC_STATUS_GENERR;
+	}
+
+	if (agc_queue_trypop(FAST_EVENT_QUEUES[fast_event_type], &pop) != AGC_STATUS_SUCCESS) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent event type:%d pop failed.\n", fast_event_type);
+		return AGC_STATUS_GENERR;
+	}
+
+	*event = (agc_event_t *)pop;
+
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_create_callback(agc_event_t **event, void *data, agc_event_callback_func callback)
+{
+	agc_event_t *call_event;
+
+	if (agc_event_fast_alloc(&call_event, EVENT_FAST_TYPE_CallBack) != AGC_STATUS_SUCCESS ) {
+		return AGC_STATUS_GENERR;
+	}
+
+	call_event->call_back = callback;
+	call_event->context = data;
+
+	*event = call_event;
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_strheader(agc_event_t *event, int index, const char *name, const char *value)
+{
+	agc_event_header_t *header = NULL;
+	
+	header = fast_get_header(event, index);
+	if (!header) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "agc_event_fast_set_strheader  header not exist index %d.\n",  index);
+		return AGC_STATUS_GENERR;
+	}
+
+	strcpy(header->name, name);
+	strcpy(header->value, value);
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_intheader(agc_event_t *event, int index, const char *name, int value)
+{
+	agc_event_header_t *header = NULL;
+
+	header = fast_get_header(event, index);
+
+	if (!header) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "agc_event_fast_set_intheader  header not exist index %d.\n", index);
+		return AGC_STATUS_GENERR;
+	}
+
+	strcpy(header->name, name);
+	sprintf(header->value, "%d", value);
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_uintheader(agc_event_t *event, int index,  const char *name, uint32_t value)
+{
+	agc_event_header_t *header = NULL;
+
+	header = fast_get_header(event, index);
+
+	if (!header) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "agc_event_fast_set_uintheader  header not exist index %d.\n", index);
+		return AGC_STATUS_GENERR;
+	}
+
+	strcpy(header->name, name);
+	sprintf(header->value, "%u", value);
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_get_type(agc_event_t *event, int *type)
+{
+	agc_event_header_t *header = NULL;
+
+	header = fast_get_header(event, EVENT_FAST_HEADERINDEX1);
+	if (!header) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "agc_event_fast_get_type  header not exist index %d.\n", index);
+		return AGC_STATUS_GENERR;
+	}
+
+	*type = atoi(header->value);
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_release(agc_event_t **event) {
+	fast_event_node_t *fast;
+	agc_event_t *pevent = *event;
+	
+	if (!pevent || !pevent->fast) {
+		return AGC_STATUS_FALSE;
+	}
+
+	fast = pevent->fast;
+
+	agc_queue_trypush(FAST_EVENT_QUEUES[fast->type], pevent);
+
+	*event = NULL;
+		
+	return AGC_STATUS_SUCCESS;
+}
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_body(agc_event_t *event, const char *body, int len)
+{
+	if (!event || !event->body) {
+		return AGC_STATUS_FALSE;
+	}
+
+	memcpy(event->body, body, len);
+	return AGC_STATUS_SUCCESS;
+}
+
+static agc_status_t fast_event_create(agc_event_t **event, int fast_event_type, int event_id, const char **headers, 
+								const int *valuelengths, int headernumbers, int bodylength)
+{
+	agc_event_t *new_event = NULL;
+	int payload_size = 0;
+	int i = 0;
+	char *buff = NULL;
+	fast_event_node_t *fast = NULL;
+	agc_event_header_t *new_header = NULL;
+
+	new_event= malloc(sizeof(agc_event_t));
+	memset(new_event, 0, sizeof(agc_event_t));
+	assert(new_event);
+	new_event->event_id = event_id;
+
+	/* payload
+	*  fast_event_node_t
+	*  agc_event_header_t* * headernumbers
+	*  agc_event_header_t * headernumbers
+	*  name->value name->value
+	*  body
+	*/
+	payload_size += sizeof(fast_event_node_t);
+	payload_size += headernumbers * sizeof(agc_event_header_t *);
+	payload_size += headernumbers * sizeof(agc_event_header_t);
+	
+	for (i = 0; i < headernumbers; i++) {
+		payload_size += (strlen(headers[i]) + 1);
+		payload_size += valuelengths[i];
+	}
+
+	payload_size += bodylength;
+
+	buff = malloc(payload_size);
+	assert(buff);
+	memset(buff, 0, payload_size);
+	
+	fast = (fast_event_node_t *)buff;
+	buff += sizeof(fast_event_node_t);
+
+	//fill fast
+	new_event->fast = fast;
+	fast->type = fast_event_type;
+	fast->header_numbers = headernumbers;
+	fast->headers = (agc_event_header_t **)buff;
+	buff += headernumbers * sizeof(agc_event_header_t *);
+
+	//fill headers
+	for (i = 0; i < headernumbers; i++) {
+		fast->headers[i] = (agc_event_header_t *)buff;
+		fast_add_header(new_event, fast->headers[i]);
+		buff += sizeof(agc_event_header_t);
+	}
+
+	for (i = 0; i < headernumbers; i++) {
+		new_header = fast->headers[i];
+		new_header->name = buff;
+		buff += (strlen(headers[i]) + 1);
+		new_header->value = buff;
+		buff += valuelengths[i];
+	}
+
+	if (bodylength > 0) {
+		new_event->body = buff;
+	}
+
+	if (headernumbers > 0) {
+		new_header = fast->headers[EVENT_FAST_HEADERINDEX1];
+		strcpy(new_header->name, EVENT_HEADER_TYPE);
+		sprintf(new_header->value, "%d", fast_event_type);
+	}
+
+	*event = new_event;
+	
+	return AGC_STATUS_SUCCESS;
+}
+
+static inline void fast_add_header(agc_event_t *event, agc_event_header_t *header)
+{
+	if (event->last_header) {
+		event->last_header->next = header;
+	} else {
+		event->headers = header;
+	}
+
+	event->last_header = header;
+}
+
+static inline agc_event_header_t *fast_get_header(agc_event_t *event, int index)
+{
+	fast_event_node_t *fast;
+	agc_event_header_t *header;
+	
+	if (!event || !event->fast) {
+		return NULL;
+	}
+
+	fast = event->fast;
+	if (index >= fast->header_numbers) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent event type:%d invalid header index %d.\n", fast->type, index);
+		return NULL;
+	}
+
+	header = fast->headers[index];
+
+	if (!header) {
+		agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "fastevent event type:%d header not exist index %d.\n", fast->type, index);
+		return NULL;
+	}
+
+	return header;
+}
 

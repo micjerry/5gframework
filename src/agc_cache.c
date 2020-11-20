@@ -4,12 +4,14 @@ static agc_cache_actions_t *cache_actions = NULL;
 
 AGC_DECLARE(agc_status_t) agc_cache_init(agc_memory_pool_t *pool)
 {
-	 agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Cache init success.\n");
+	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Cache init success.\n");
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(agc_status_t) agc_cache_shutdown(void)
 {
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Cache shutdown success.\n");
+	return AGC_STATUS_SUCCESS;
 }
 
 AGC_DECLARE(void) agc_cache_register_impl(agc_cache_actions_t *actions)

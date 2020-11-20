@@ -162,10 +162,8 @@ AGC_DECLARE(void) agc_log_vprintf(agc_log_type_t type,
 	agc_time_t now = {0};
 	agc_time_exp_t tm;
 
-	agc_log_level_t limit_level = runtime.hard_log_level;
-
     
-	if (level > limit_level) {
+	if (level >  runtime.hard_log_level) {
 		return;
 	}
     
@@ -258,6 +256,12 @@ AGC_DECLARE(agc_status_t) agc_log_bind_logger(agc_log_function_t function, agc_l
 	binding->function = function;
 	binding->level = level;
 	binding->is_console = is_console;
+
+	//printf( "Log bind %d .\n", level);
+	if (level > runtime.hard_log_level) {
+		//printf("Log bind reset runtime.hard_log_level %d .\n", level);
+		runtime.hard_log_level = level;
+	}
 
 	agc_mutex_lock(LOGGER_BIND_LOCK);
 	for (ptr = LOGGER_BINDINGS; ptr && ptr->next; ptr = ptr->next);

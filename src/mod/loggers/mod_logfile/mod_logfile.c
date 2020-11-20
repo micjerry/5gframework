@@ -60,7 +60,7 @@ AGC_MODULE_LOAD_FUNCTION(mod_logfile_load)
         return AGC_STATUS_GENERR;
     }
     
-    agc_log_bind_logger(mod_logfile_logger, AGC_LOG_DEBUG, AGC_FALSE);
+    agc_log_bind_logger(mod_logfile_logger, profile->level, AGC_FALSE);
     return AGC_STATUS_SUCCESS;
 }
 

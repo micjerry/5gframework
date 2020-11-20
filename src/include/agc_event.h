@@ -33,6 +33,52 @@ AGC_BEGIN_EXTERN_C
 #define EVENT_HEADER_CODE "_code"
 #define EVENT_HEADER_DESC "_desc"
 #define EVENT_HEADER_SUBNAME "_subname" 
+#define EVENT_HEADER_TYPE "_t"
+
+#define EVENT_HEADER_TYPE_LEN 4
+
+#define EVENT_FAST_HEADER_INDEX1 0
+
+typedef enum {
+	EVENT_FAST_HEADERINDEX1,
+	EVENT_FAST_HEADERINDEX2,	
+	EVENT_FAST_HEADERINDEX3,
+	EVENT_FAST_HEADERINDEX4,
+	EVENT_FAST_HEADERINDEX5,
+	EVENT_FAST_HEADERINDEX6,
+	EVENT_FAST_HEADERINDEX7,
+} agc_fast_event_headerindex_t;
+
+typedef enum {
+	EVENT_FAST_TYPE_CallBack,
+	EVENT_FAST_TYPE_S2M_UpfSetUpReq,
+	EVENT_FAST_TYPE_S2M_UpfSetUpRsp,
+	EVENT_FAST_TYPE_S2M_GnpSetUpReq,
+	EVENT_FAST_TYPE_S2M_GnpSetUpRsp,
+	EVENT_FAST_TYPE_S2M_SessCheckReq,
+	EVENT_FAST_TYPE_S2M_SessCheckRsp,
+	EVENT_FAST_TYPE_S2M_SessReleaseReq,
+	EVENT_FAST_TYPE_S2M_SessReleaseRsp,
+	EVENT_FAST_TYPE_S2M_SessReleaseInd,
+	EVENT_FAST_TYPE_S2M_UpfUpdateReq,
+	EVENT_FAST_TYPE_S2M_UpfUpdateRsp,
+	EVENT_FAST_TYPE_S2M_GnpUpdateReq,
+	EVENT_FAST_TYPE_S2M_GnpUpdateRsp,
+	EVENT_FAST_TYPE_M2S_UpfSetUpReq,
+	EVENT_FAST_TYPE_M2S_UpfSetUpRsp,
+	EVENT_FAST_TYPE_M2S_GnpSetUpReq,
+	EVENT_FAST_TYPE_M2S_GnpSetUpRsp,
+	EVENT_FAST_TYPE_M2S_SessCheckReq,
+	EVENT_FAST_TYPE_M2S_SessCheckRsp,
+	EVENT_FAST_TYPE_M2S_SessReleaseReq,
+	EVENT_FAST_TYPE_M2S_SessReleaseRsp,
+	EVENT_FAST_TYPE_M2S_SessReleaseInd,
+	EVENT_FAST_TYPE_M2S_UpfUpdateReq,
+	EVENT_FAST_TYPE_M2S_UpfUpdateRsp,
+	EVENT_FAST_TYPE_M2S_GnpUpdateReq,
+	EVENT_FAST_TYPE_M2S_GnpUpdateRsp,
+	EVENT_FAST_TYPE_Invalid
+} agc_fast_event_types_t;
 
 struct agc_event_header {
 	/*! the header name */
@@ -51,6 +97,8 @@ struct agc_event {
         
 	/*! the source of event, the same soure will be handled by same thread */
 	uint32_t source_id;
+
+	int debug_id;
     
 	/*! the event headers */
 	agc_event_header_t *headers; 
@@ -59,6 +107,9 @@ struct agc_event {
     
 	 /*! the context of event */
 	void *context;
+
+	/*! the fast thing*/
+	void *fast;
     
 	/*! the body of the event */
 	char *body;
@@ -101,6 +152,8 @@ AGC_DECLARE(void) agc_event_destroy(agc_event_t **event);
 
 AGC_DECLARE(agc_status_t) agc_event_add_header(agc_event_t *event, const char *header_name, const char *fmt, ...) PRINTF_FUNCTION(3, 4);
 
+AGC_DECLARE(agc_status_t) agc_event_add_header_repeatcheck(agc_event_t *event, const char *header_name, const char *fmt, ...) PRINTF_FUNCTION(3, 4);
+
 AGC_DECLARE(agc_status_t) agc_event_add_header_string(agc_event_t *event, const char *header_name, const char *data);
 
 AGC_DECLARE(agc_status_t) agc_event_del_header(agc_event_t *event, const char *header_name);
@@ -131,6 +184,24 @@ AGC_DECLARE(agc_status_t) agc_event_serialize_json_obj(agc_event_t *event, cJSON
 AGC_DECLARE(agc_status_t) agc_event_serialize_json(agc_event_t *event, char **str);
 
 AGC_DECLARE(agc_status_t) agc_event_create_json(agc_event_t **event, const char *json);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_initial(int fast_event_type, int event_id, int capacity, const char **headers, const int *valuelengths, int headernumbers, int bodylength);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_alloc(agc_event_t **event, int fast_event_type);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_create_callback(agc_event_t **event, void *data, agc_event_callback_func callback);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_strheader(agc_event_t *event, int index, const char *name, const char *value);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_intheader(agc_event_t *event, int index, const char *name, int value);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_uintheader(agc_event_t *event, int index, const char *name, uint32_t value);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_set_body(agc_event_t *event, const char *body, int len);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_get_type(agc_event_t *event, int *type);
+
+AGC_DECLARE(agc_status_t) agc_event_fast_release(agc_event_t **event);
 
 AGC_END_EXTERN_C
 

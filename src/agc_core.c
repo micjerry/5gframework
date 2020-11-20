@@ -18,7 +18,7 @@ AGC_DECLARE(agc_status_t) agc_core_init(agc_bool_t console, const char **err)
 	memset(&runtime, 0, sizeof(runtime));
 	gethostname(runtime.hostname, sizeof(runtime.hostname));
 	runtime.cpu_count = sysconf (_SC_NPROCESSORS_ONLN);
-	runtime.hard_log_level = AGC_LOG_DEBUG;
+	runtime.hard_log_level = AGC_LOG_CRIT;
 	runtime.max_db_handles = 50;
 	runtime.db_handle_timeout = 5000000;
     
