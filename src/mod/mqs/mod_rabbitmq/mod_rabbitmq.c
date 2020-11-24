@@ -23,8 +23,10 @@ AGC_MODULE_LOAD_FUNCTION(mod_rabbitmq_load)
 
 	*module_interface = agc_loadable_module_create_interface(agcmq_global.pool, modname);
 
-	agcmq_global.producer_hash = agc_hash_make(agcmq_global.pool);
-	agcmq_global.consumer_hash = agc_hash_make(agcmq_global.pool);
+	//agcmq_global.producer_hash = agc_hash_make(agcmq_global.pool);
+	//agcmq_global.consumer_hash = agc_hash_make(agcmq_global.pool);
+	//agc_mutex_init(&agcmq_global.producer_mutex, AGC_MUTEX_NESTED, agcmq_global.pool);
+	//agc_mutex_init(&agcmq_global.comsumer_mutex, AGC_MUTEX_NESTED, agcmq_global.pool);
 
 	if (agcmq_load_config() != AGC_STATUS_SUCCESS) {
 		return AGC_STATUS_GENERR;
@@ -43,23 +45,35 @@ AGC_MODULE_LOAD_FUNCTION(mod_rabbitmq_load)
 
 AGC_MODULE_SHUTDOWN_FUNCTION(mod_rabbitmq_shutdown)
 {
-	 agc_hash_index_t *hi;
-	 void *val;
+	 //agc_hash_index_t *hi;
+	 //void *val;
 	 agcmq_producer_profile_t *producer;
+	 agcmq_producer_profile_t *destroy_producer;
 	 agcmq_consumer_profile_t *consumer;
+	 agcmq_consumer_profile_t *destroy_consumer;
 
 	agc_event_unbind(&mq_subscribe);
-	for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.producer_hash); hi; hi = agc_hash_next(hi)) {
+	for (producer = agcmq_global.producers; producer; producer = producer->next) {
+		destroy_producer = producer;
+		agcmq_producer_destroy(&destroy_producer);
+	}
+
+	agcmq_global.producers = NULL;
+	agcmq_global.last_producer = NULL;
+	
+	/*for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.producer_hash); hi; hi = agc_hash_next(hi)) {
 		val = agc_hash_this_val(hi);
 		producer = (agcmq_producer_profile_t *) val;
 		agcmq_producer_destroy(&producer);
+	} */
+
+	for (consumer = agcmq_global.consumers; consumer; consumer = consumer->next) {
+		destroy_consumer = consumer;
+		agcmq_consumer_destroy(&destroy_consumer);
 	}
 
-	for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.consumer_hash); hi; hi = agc_hash_next(hi)) {
-		val = agc_hash_this_val(hi);
-		consumer = (agcmq_consumer_profile_t *) val;
-		agcmq_consumer_destroy(&consumer);
-	}
+	agcmq_global.consumers = NULL;
+	agcmq_global.last_consumer = NULL;
 		
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Mq  shutdown success.\n");
 	return AGC_STATUS_SUCCESS;
@@ -67,7 +81,7 @@ AGC_MODULE_SHUTDOWN_FUNCTION(mod_rabbitmq_shutdown)
 
 static void handle_event(void *data)
 {
-	agc_hash_index_t *hi;
+	//agc_hash_index_t *hi;
 	void *val;
 	agcmq_producer_profile_t *producer;
 	agc_event_t *event = (agc_event_t *)data;
@@ -82,9 +96,7 @@ static void handle_event(void *data)
 
 	agc_log_printf(AGC_LOG, AGC_LOG_DEBUG, "receive event %d.\n", event->event_id);
 
-	for (hi = agc_hash_first(agcmq_global.pool, agcmq_global.producer_hash); hi; hi = agc_hash_next(hi))  {
-		val = agc_hash_this_val(hi);
-		producer = (agcmq_producer_profile_t *) val;
+	for (producer = agcmq_global.producers; producer; producer = producer->next) {
 		if (!producer || !producer->running) {
 			agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "invalid producer.\n");
 			continue;

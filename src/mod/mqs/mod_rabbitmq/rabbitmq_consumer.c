@@ -1,5 +1,7 @@
 #include "mod_rabbitmq.h"
 
+static void add_consumer(agcmq_consumer_profile_t *consumer);
+
 agc_status_t agcmq_consumer_create(char *name, agcmq_connection_info_t *conn_infos, agcmq_conn_parameter_t *parameters, agc_memory_pool_t *pool)
 {
 	agcmq_consumer_profile_t *consumer;
@@ -31,7 +33,8 @@ agc_status_t agcmq_consumer_create(char *name, agcmq_connection_info_t *conn_inf
 		return AGC_STATUS_GENERR;
 	}
 
-	agc_hash_set(agcmq_global.consumer_hash, consumer->name, AGC_HASH_KEY_STRING, consumer);
+	add_consumer(consumer);
+	//agc_hash_set(agcmq_global.consumer_hash, consumer->name, AGC_HASH_KEY_STRING, consumer);
 
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Consumer[%s] Successfully started.\n", consumer->name);
 	return AGC_STATUS_SUCCESS;
@@ -50,9 +53,9 @@ agc_status_t agcmq_consumer_destroy(agcmq_consumer_profile_t **profile)
 	consumer = *profile;
 	pool = consumer->pool;
 
-	if (consumer->name) {
+	/*if (consumer->name) {
 		agc_hash_set(agcmq_global.consumer_hash, consumer->name, AGC_HASH_KEY_STRING, NULL);
-	}
+	} */
 
 	consumer->running = 0;
 
@@ -264,3 +267,13 @@ void *agcmq_consumer_thread(agc_thread_t *thread, void *data)
 	return NULL;
 }
 
+static void add_consumer(agcmq_consumer_profile_t *consumer)
+{
+	if (agcmq_global.last_consumer) {
+		agcmq_global.last_consumer->next = consumer;
+	} else {
+		agcmq_global.consumers= consumer;
+	}
+
+	agcmq_global.last_consumer = consumer;
+}

@@ -49,7 +49,9 @@ struct agcmq_conn_parameter_s {
 	unsigned int delivery_timestamp;
 };
 
-typedef struct agcmq_producer_profile_s {
+typedef struct agcmq_producer_profile_s agcmq_producer_profile_t;
+
+struct agcmq_producer_profile_s {
 	char *name;
 	agcmq_conn_parameter_t *conn_parameter;
 	agcmq_connection_info_t *conn_infos;
@@ -63,9 +65,12 @@ typedef struct agcmq_producer_profile_s {
 
 	agc_queue_t *send_queue;
 	uint8_t event_list[EVENT_ID_LIMIT];
-} agcmq_producer_profile_t;
+	agcmq_producer_profile_t *next;
+};
 
-typedef struct agcmq_consumer_profile_s {
+typedef struct agcmq_consumer_profile_s agcmq_consumer_profile_t;
+
+struct agcmq_consumer_profile_s {
 	char *name;
 	agcmq_conn_parameter_t *conn_parameter;
 	agcmq_connection_info_t *conn_infos;
@@ -74,13 +79,22 @@ typedef struct agcmq_consumer_profile_s {
 	agc_thread_t *consumer_thread;
 	agc_bool_t running;
 	agc_memory_pool_t *pool;
-} agcmq_consumer_profile_t;
+	agcmq_consumer_profile_t *next;
+};
 
 struct {
 	agc_memory_pool_t *pool;
 
-	agc_hash_t *producer_hash;
-	agc_hash_t *consumer_hash;
+	//agc_hash_t *producer_hash;
+	//agc_hash_t *consumer_hash;
+	//agc_mutex_t *producer_mutex;
+	//agc_mutex_t *comsumer_mutex;
+
+	agcmq_producer_profile_t *producers;
+	agcmq_producer_profile_t *last_producer;
+	agcmq_consumer_profile_t *consumers;
+	agcmq_consumer_profile_t *last_consumer;
+	
 } agcmq_global;
 
 void agcmq_producer_msg_destroy(agcmq_message_t **msg);

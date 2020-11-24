@@ -2,6 +2,8 @@
 
 #define MQ_EVENT_LIMIT 10000
 
+static void add_producer(agcmq_producer_profile_t *producer);
+
 void agcmq_producer_msg_destroy(agcmq_message_t **msg)
 {
 	if (!msg || !*msg) return;
@@ -82,7 +84,8 @@ agc_status_t agcmq_producer_create(char *name, agcmq_connection_info_t *conn_inf
 		return AGC_STATUS_GENERR;
 	}
 
-	agc_hash_set(agcmq_global.producer_hash, producer->name, AGC_HASH_KEY_STRING, producer);
+	//agc_hash_set(agcmq_global.producer_hash, producer->name, AGC_HASH_KEY_STRING, producer);
+	add_producer(producer);
 
 	agc_log_printf(AGC_LOG, AGC_LOG_INFO, "Producer[%s] Successfully started.\n", producer->name);
 	return AGC_STATUS_SUCCESS;
@@ -102,9 +105,9 @@ agc_status_t agcmq_producer_destroy(agcmq_producer_profile_t **profile)
 	producer = *profile;
 	pool = producer->pool;
 
-	if (producer->name) {
+	/*if (producer->name) {
 		agc_hash_set(agcmq_global.producer_hash, producer->name, AGC_HASH_KEY_STRING, NULL);
-	}
+	}*/
 
 	producer->running = 0;
 
@@ -252,4 +255,14 @@ agc_status_t agcmq_producer_send(agcmq_producer_profile_t *producer, agcmq_messa
 	return AGC_STATUS_SUCCESS;
 }
 
+static void add_producer(agcmq_producer_profile_t *producer)
+{
+	if (agcmq_global.last_producer) {
+		agcmq_global.last_producer->next = producer;
+	} else {
+		agcmq_global.producers = producer;
+	}
+
+	agcmq_global.last_producer = producer;
+}
 
