@@ -13,7 +13,6 @@ static agc_status_t agcmq_load_profile(const char *filename,
 
 agc_status_t agcmq_load_config()
 {
-	agc_memory_pool_t *pool;
 	agc_memory_pool_t *loop_pool;
 	agc_dir_t *dir = NULL;
 	char *dir_path = NULL;
@@ -42,31 +41,23 @@ agc_status_t agcmq_load_config()
 		if ((fname_ext = strrchr(fname, '.'))) {
 			if (!strcmp(fname_ext, ".yml")) {
 				char *full_filename = NULL;
-				
-				if (agc_memory_create_pool(&pool) != AGC_STATUS_SUCCESS) {
-					agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc memory failed.\n");
-					break;
-				}
 
 				full_filename = agc_mprintf("%s%s%s", dir_path, AGC_PATH_SEPARATOR, fname);
 				if (!full_filename) {
 					agc_log_printf(AGC_LOG, AGC_LOG_ERROR, "Alloc memory failed.\n");
-					agc_memory_destroy_pool(&pool);
 					break;
 				}
 				
-				if ((agcmq_load_profile(full_filename, &pname, &ptype, &conn, &para, pool) != AGC_STATUS_SUCCESS)
+				if ((agcmq_load_profile(full_filename, &pname, &ptype, &conn, &para, agcmq_global.pool) != AGC_STATUS_SUCCESS)
 					|| !pname || !ptype || !conn || !para) {
 					agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Parse file %s failed.\n", fname);
-					agc_memory_destroy_pool(&pool);
 				} else {
 					if (!strcmp(ptype, "producer")) {
-						agcmq_producer_create(pname, conn, para, pool);
+						agcmq_producer_create(pname, conn, para, agcmq_global.pool);
 					} else if (!strcmp(ptype, "consumer")) {
-						agcmq_consumer_create(pname, conn, para, pool);
+						agcmq_consumer_create(pname, conn, para, agcmq_global.pool);
 					} else {
 						agc_log_printf(AGC_LOG, AGC_LOG_WARNING, "Unknown profile %s.\n", fname);
-						agc_memory_destroy_pool(&pool);
 					}
 				}
 

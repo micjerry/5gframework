@@ -44,18 +44,12 @@ agc_status_t agcmq_consumer_destroy(agcmq_consumer_profile_t **profile)
 {
 	agc_status_t ret;
 	agcmq_consumer_profile_t *consumer;
-	agc_memory_pool_t *pool;
 
 	if (!profile || !*profile) {
 		return AGC_STATUS_SUCCESS;
 	}
 
 	consumer = *profile;
-	pool = consumer->pool;
-
-	/*if (consumer->name) {
-		agc_hash_set(agcmq_global.consumer_hash, consumer->name, AGC_HASH_KEY_STRING, NULL);
-	} */
 
 	consumer->running = 0;
 
@@ -70,10 +64,6 @@ agc_status_t agcmq_consumer_destroy(agcmq_consumer_profile_t **profile)
 	}
 
 	consumer->conn_infos = NULL;
-
-	if (pool) {
-		agc_memory_destroy_pool(&pool);
-	}
 
 	*profile = NULL;
 
