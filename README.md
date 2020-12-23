@@ -13,10 +13,6 @@ cd hiredis-vip/
 make
 make install
 
-# for windows user --slj--2020-0330
-# convert ASCII file from dos format to unix format
-ls -lrt `find -type f` |awk '{print $9}'|xargs file|grep ASCII| awk '{print $1}'|tr -d ':' |xargs dos2unix
-
 ./bootstrap.sh
 
 
