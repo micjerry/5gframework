@@ -1,3 +1,21 @@
+This is a common linux server framework, functions:
+
+epoll driver
+
+cache
+
+db
+
+mq
+
+events
+
+timer
+
+log
+
+
+
 #install deps
 
 yum install -y gcc gcc+ gcc-c++ git autoconf automake libtool libyaml-devel lksctp-tools-devel librabbitmq-devel sqlite-devel expat-devel libedit-devel libuuid-devel
